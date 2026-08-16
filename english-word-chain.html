@@ -356,7 +356,7 @@
   const APP_SHARED_KEY = '2a9208af6c7c45b36a775ab8d2be09e27c4a7e2d447d5297';
 
   // ⚠️ Replace this with your own email address before sharing with testers.
-  const FEEDBACK_EMAIL = 'muromi385@gmail.com';
+  const FEEDBACK_EMAIL = 'your-email@example.com';
 
   const els = {
     correctVal: document.getElementById('correctVal'), roundVal: document.getElementById('roundVal'),
@@ -628,8 +628,24 @@
     renderSuggestionBox(suggestions, '💡 正解例(5つ)', ()=>{ endGame(); });
   }
 
-  function submitWord(){
-    if(!state || !state.alive) return;
+  let checkingWord = false;
+
+  // Falls back to a live check against the free dictionary API when a word
+  // isn't in our curated local list — this lets real words like "peach" or
+  // "teacher" (which just aren't in the ~1750-word built-in list) still work,
+  // matching what the 📖 lookup panel can already find.
+  async function isKnownEnglishWord(word){
+    if(ALL_WORDS.has(word)) return true;
+    try{
+      const res = await fetchWithTimeout(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`, 5000);
+      return res.ok;
+    }catch(err){
+      return false; // network error or timeout — treat as not confirmed
+    }
+  }
+
+  async function submitWord(){
+    if(!state || !state.alive || checkingWord) return;
     const raw = els.wordInput.value.trim();
     if(!raw) return;
     if(!isEnglishOnly(raw)){ setFeedback('英字のみで入力してください (A-Z)', false); return; }
@@ -639,8 +655,19 @@
     if(state.requiredLetter && firstLetter(norm) !== state.requiredLetter){
       setFeedback(`「${state.requiredLetter.toUpperCase()}」から始まる単語を入力してください`, false); sndWrong(); return;
     }
-    if(!ALL_WORDS.has(norm)){
-      setFeedback(`不正解: 収録辞書に見つかりませんでした。スペルを確認するか📖で調べてみましょう`, false); sndWrong(); return;
+
+    let valid = ALL_WORDS.has(norm);
+    if(!valid){
+      checkingWord = true;
+      els.answerBtn.disabled = true;
+      setFeedback('🔎 辞書で確認しています…', true);
+      valid = await isKnownEnglishWord(norm);
+      checkingWord = false;
+      els.answerBtn.disabled = false;
+      if(!state || !state.alive) return; // game may have ended while we were checking
+    }
+    if(!valid){
+      setFeedback(`不正解: 辞書に見つかりませんでした。スペルを確認するか📖で調べてみましょう`, false); sndWrong(); return;
     }
 
     // correct!
