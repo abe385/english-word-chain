@@ -172,6 +172,7 @@
     <div class="topRow">
       <button class="iconBtn" id="tierBtn">🆓 <span id="tierLabel">無料版</span></button>
       <button class="iconBtn" id="soundBtn">🔊</button>
+      <button class="iconBtn" id="feedbackBtn">📝 フィードバック</button>
     </div>
     <div class="eyebrow">ENGLISH WORD CHAIN</div>
     <h1>英単語しりとり 学習版</h1>
@@ -264,6 +265,18 @@
   </div>
 </div>
 
+<div class="overlay" id="feedbackOverlay" style="display:none;">
+  <div class="card">
+    <h2>📝 フィードバックを送る</h2>
+    <p>気づいたこと・要望・バグなど、何でも気軽に教えてください。ありがとうございます！</p>
+    <textarea id="feedbackText" rows="6" placeholder="例: 単語の意味がたまに出ないことがあった、など"
+      style="width:100%; box-sizing:border-box; border:1px solid var(--paper-dim); border-radius:10px; padding:10px; font-family:'Zen Kaku Gothic New', sans-serif; font-size:14px; resize:vertical;"></textarea>
+    <button class="primary" id="sendFeedbackBtn" style="margin-top:12px;">✉️ メールで送る</button>
+    <button class="closeBtn" id="closeFeedbackBtn">閉じる</button>
+    <div class="installNote">「メールで送る」を押すと、お使いのメールアプリが開きます。そのまま送信してください。</div>
+  </div>
+</div>
+
 <script>
 (function(){
   // ================= WORD LIST (learner-friendly common English vocabulary) =================
@@ -342,6 +355,9 @@
   // an APP_KEY secret on the Worker yet.
   const APP_SHARED_KEY = '2a9208af6c7c45b36a775ab8d2be09e27c4a7e2d447d5297';
 
+  // ⚠️ Replace this with your own email address before sharing with testers.
+  const FEEDBACK_EMAIL = 'muromi385@gmail.com';
+
   const els = {
     correctVal: document.getElementById('correctVal'), roundVal: document.getElementById('roundVal'),
     timerVal: document.getElementById('timerVal'), timerBox: document.getElementById('timerBox'),
@@ -388,6 +404,20 @@
   }
   els.soundBtn.addEventListener('click', ()=>{
     soundOn = !soundOn; els.soundBtn.textContent = soundOn ? '🔊' : '🔇'; if(soundOn) ensureAudio();
+  });
+
+  // ================= FEEDBACK =================
+  document.getElementById('feedbackBtn').addEventListener('click', ()=>{
+    document.getElementById('feedbackOverlay').style.display = 'flex';
+  });
+  document.getElementById('closeFeedbackBtn').addEventListener('click', ()=>{
+    document.getElementById('feedbackOverlay').style.display = 'none';
+  });
+  document.getElementById('sendFeedbackBtn').addEventListener('click', ()=>{
+    const body = document.getElementById('feedbackText').value.trim();
+    const subject = encodeURIComponent('英単語しりとり テスト版フィードバック');
+    const encodedBody = encodeURIComponent(body || '(コメントなし)');
+    window.location.href = `mailto:${FEEDBACK_EMAIL}?subject=${subject}&body=${encodedBody}`;
   });
 
   // ================= TIER / UPGRADE =================
