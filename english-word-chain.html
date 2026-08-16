@@ -125,6 +125,12 @@
     background:#2a2f42; border-radius:999px; padding:3px 10px; font-weight:700; color:var(--gold); flex-shrink:0;
   }
   .suggestBox .wordRow .m{ font-size:12.5px; color:#c9d2e8; line-height:1.5; flex:1; min-width:120px; }
+  #finishRoundBtn{
+    margin-top:12px; width:100%; background:var(--accent); color:#fff; border:none;
+    border-radius:10px; padding:12px; font-weight:700; font-size:14px; cursor:pointer;
+    font-family:'Zen Kaku Gothic New', sans-serif;
+  }
+  #finishRoundBtn:hover{ background:var(--accent-dark); }
 
   .overlay{
     position:fixed; inset:0; background:rgba(10,11,17,0.82); display:flex; align-items:center;
@@ -210,7 +216,7 @@
   <div class="feedback" id="feedback"></div>
   <div id="suggestArea"></div>
   <div class="hint" id="micNotice" style="display:none;"></div>
-  <div class="hint">回答できたら「回答」ボタンで即判定。2回連続で時間切れになると正解例を5つ表示します。</div>
+  <div class="hint">回答できたら「回答」ボタンで即判定。1ゲームで時間切れが合計2回になると、正解例を5つ表示してゲーム終了です。</div>
 </div>
 
 <div class="overlay" id="startOverlay">
@@ -220,10 +226,10 @@
     英語のWord Chain(しりとり)で語彙力を鍛えるゲームです。<br><br>
     ・制限時間は60秒からスタート。3問正解ごとに時間が短くなり、9問正解すると30秒固定になります。<br>
     ・「回答」ボタンでいつでも正誤判定。<br>
-    ・2回連続で時間切れになった場合は、正解例を5つ表示します。<br>
+    ・1ゲームで時間切れが合計2回になった場合は、正解例を5つ表示してゲーム終了になります(間に正解を挟んでも回数はリセットされません)。<br>
     ・わからない単語は📖で意味・使い方を調べられます。<br>
     ・🎤で音声入力もできます。<br><br>
-    <b>🆓 無料版:</b> 3ラウンド・辞書検索3回まで無料<br>
+    <b>🆓 無料版:</b> 10ラウンド・辞書検索3回まで無料<br>
     <b>🌟 プレミアム:</b> ラウンド数・辞書検索とも無制限
     </p>
     <button class="primary" id="startBtn">はじめる</button>
@@ -321,15 +327,20 @@
   let state = null;
   let isPremium = false;
   let lookupCount = 0;
-  const FREE_ROUNDS = 3;
+  const FREE_ROUNDS = 10;
   const FREE_LOOKUPS = 3;
-  const MAX_TIMEOUT_REVEALS = 2; // after this many "(word)" reveals in one game, a timeout ends the game
   let soundOn = true;
 
   // Once you deploy the Cloudflare Worker (see worker.js), paste its URL here,
   // e.g. "https://word-chain-translate.yourname.workers.dev". Leave it as ''
   // to keep using the free MyMemory API — the game works either way.
-  const DEEPL_PROXY_URL = '';
+  const DEEPL_PROXY_URL = 'https://word-chain-translate.hisashi-word-chain.workers.dev';
+
+  // Must match the APP_KEY secret set on the Worker (wrangler secret put APP_KEY).
+  // This is a lightweight deterrent against casual abuse, not a strong secret —
+  // anyone can still view it in this file's source. Leave '' if you haven't set
+  // an APP_KEY secret on the Worker yet.
+  const APP_SHARED_KEY = '';
 
   const els = {
     correctVal: document.getElementById('correctVal'), roundVal: document.getElementById('roundVal'),
@@ -410,8 +421,7 @@
       correctCount:0, roundCount:0, usedWords:new Set(), chainDisplay:[],
       requiredLetter:null, timeLeft:0, alive:true, awaitingReveal:false,
       suggestionCooldown:new Map(), // word -> rounds remaining before it can be suggested again
-      timeoutRevealCount:0, // how many times the "(word)" answer reveal has been used this game (max 2)
-      consecutiveMisses:0 // timeouts in a row without a correct answer; reveal only triggers at 2
+      timeoutCount:0 // total timeouts this game (not reset by correct answers); 2 total ends the game
     };
     els.startOverlay.style.display = 'none';
     els.overOverlay.style.display = 'none';
@@ -517,16 +527,18 @@
 
   // Renders the 5 suggestion words as a vertical list, each with its own meaning
   // fetched (in parallel) from the dictionary API and filled in as it arrives.
-  function renderSuggestionBox(suggestions, labelText){
+  function renderSuggestionBox(suggestions, labelText, onFinish){
     const rowsHtml = suggestions.map((w, i) => `
       <div class="wordRow">
         <span class="w">${w}</span>
         <span class="m" id="sugMeaning${i}">意味を調べています…</span>
       </div>`).join('');
+    const finishBtnHtml = onFinish ? `<button id="finishRoundBtn">🏁 結果を見る</button>` : '';
     els.suggestArea.innerHTML = `
       <div class="suggestBox">
         <div class="lbl">${labelText}</div>
         <div class="wordList">${rowsHtml}</div>
+        ${finishBtnHtml}
       </div>`;
     suggestions.forEach((w, i) => {
       fetchCombinedMeaning(w).then(meaning=>{
@@ -537,6 +549,9 @@
           : '意味は見つかりませんでした(通信エラーの可能性があります)';
       });
     });
+    if(onFinish){
+      document.getElementById('finishRoundBtn').addEventListener('click', onFinish);
+    }
   }
   function escapeHtml(str){
     return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -544,18 +559,21 @@
 
   function handleTimeout(){
     sndTimeUp();
-    state.consecutiveMisses += 1;
+    state.timeoutCount += 1;
 
-    // first miss in a row: just mark it wrong and try again — no reveal yet
-    if(state.consecutiveMisses < 2){
+    // first timeout of the game: just mark it wrong and try again — no reveal yet
+    if(state.timeoutCount < 2){
       state.roundCount += 1;
       updateHUD();
-      setFeedback('⏰ 時間切れ・不正解！もう一度挑戦してください(あと1回失敗すると正解例が出ます)', false);
+      setFeedback('⏰ 時間切れ・不正解！もう一度挑戦してください(このゲームであと1回時間切れになるとゲーム終了です)', false);
       setTimeout(()=>{ if(state.alive) nextTurn(); }, 1600);
       return;
     }
 
-    // second consecutive miss: reveal 5 example answers
+    // second timeout of the game (even with a correct answer in between): show 5
+    // example answers (for learning), then end the game. These are shown
+    // automatically by the system — they are not something the player answered,
+    // so the game does not continue afterward.
     decayCooldown(state.suggestionCooldown);
     const letter = state.requiredLetter;
     let suggestions;
@@ -568,50 +586,16 @@
       suggestions = suggestionsFor(pickLetter, state.usedWords, 5, state.suggestionCooldown);
     }
 
-    // once the "(word)" chain-continuing reveal has already been used MAX_TIMEOUT_REVEALS
-    // times this game, the next reveal still SHOWS the 5 example answers (for learning),
-    // but the game ends right after instead of continuing the chain.
-    const isFinalReveal = state.timeoutRevealCount >= MAX_TIMEOUT_REVEALS;
+    state.roundCount += 1;
+    updateHUD();
 
     if(suggestions.length === 0){
-      setFeedback('時間切れ。この文字で続く単語が見つかりませんでした。', false);
-      if(isFinalReveal){
-        state.roundCount += 1; updateHUD();
-        endGame('⏰ 時間切れ・不正解。お疲れさまでした！');
-      } else {
-        state.requiredLetter = null;
-        state.roundCount += 1;
-        state.consecutiveMisses = 0;
-        updateHUD();
-        setTimeout(nextTurn, 1500);
-      }
+      endGame('⏰ 2回目の時間切れ・不正解。お疲れさまでした！');
       return;
     }
 
-    registerCooldown(state.suggestionCooldown, suggestions, 4); // excluded for the next 3 timeout events
-    const chosen = suggestions[0];
-    state.roundCount += 1;
-
-    if(isFinalReveal){
-      // final timeout: show the 5 examples as the answer to the unsolved question, then end
-      setFeedback('⏰ 時間切れ・不正解。正解例はこちら:', false);
-      updateHUD();
-      renderSuggestionBox(suggestions, '💡 正解例(5つ)');
-      setTimeout(()=>{ endGame(); }, 6000);
-      return;
-    }
-
-    // reveal + auto-continue the chain so play goes on; reset the miss streak
-    state.timeoutRevealCount += 1;
-    state.consecutiveMisses = 0;
-    const revealsLeft = MAX_TIMEOUT_REVEALS - state.timeoutRevealCount;
-    setFeedback(`⏰ 2回連続で時間切れ！正解例はこちら:(あと${revealsLeft}回でゲーム終了になります)`, false);
-    state.usedWords.add(chosen);
-    addChip(`(${chosen})`);
-    state.requiredLetter = lastLetter(chosen);
-    updateHUD();
-    renderSuggestionBox(suggestions, '💡 正解例(5つ)');
-    setTimeout(()=>{ if(state.alive) nextTurn(); }, 6000);
+    setFeedback('⏰ このゲームで2回目の時間切れ！正解例はこちら:', false);
+    renderSuggestionBox(suggestions, '💡 正解例(5つ)', ()=>{ endGame(); });
   }
 
   function submitWord(){
@@ -636,7 +620,6 @@
     state.requiredLetter = lastLetter(norm);
     state.correctCount += 1;
     state.roundCount += 1;
-    state.consecutiveMisses = 0;
     updateHUD();
     sndCorrect();
     setFeedback('✅ 正解！つながりました', true);
@@ -664,10 +647,10 @@
   // Both requests use a timeout so a slow/unresponsive API can't leave the UI stuck on
   // "調べています…" forever, and the two sources are fetched in parallel and combined.
 
-  function fetchWithTimeout(url, ms){
+  function fetchWithTimeout(url, ms, options){
     const controller = new AbortController();
     const timer = setTimeout(()=>controller.abort(), ms);
-    return fetch(url, { signal: controller.signal }).finally(()=>clearTimeout(timer));
+    return fetch(url, { ...(options||{}), signal: controller.signal }).finally(()=>clearTimeout(timer));
   }
 
   async function fetchEnglishDefinition(word){
@@ -686,13 +669,32 @@
     }
   }
 
+  // A "translation" is only useful if it actually contains Japanese script
+  // (hiragana/katakana/kanji) and isn't just the original English word echoed
+  // back untranslated or transliterated into romaji (e.g. "onna-no-ko").
+  function looksLikeJapanese(text){
+    return /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/.test(text);
+  }
+  function isUsableTranslation(text, originalWord){
+    if(!text) return false;
+    const t = text.trim();
+    if(!t) return false;
+    if(t.toLowerCase() === originalWord.trim().toLowerCase()) return false; // echoed back untranslated
+    if(!looksLikeJapanese(t)) return false; // romaji or other non-Japanese output
+    return true;
+  }
+
   async function fetchJapaneseMeaningViaDeepL(word){
     if(!DEEPL_PROXY_URL) return null;
     try{
-      const res = await fetchWithTimeout(`${DEEPL_PROXY_URL}?word=${encodeURIComponent(word)}`, 6000);
+      const headers = APP_SHARED_KEY ? { 'X-App-Key': APP_SHARED_KEY } : {};
+      const res = await fetchWithTimeout(`${DEEPL_PROXY_URL}?word=${encodeURIComponent(word)}`, 4000, { headers });
       if(!res.ok) throw new Error('proxy failed');
       const data = await res.json();
-      return data && data.translated ? data.translated : null;
+      const translated = data && data.translated ? data.translated : null;
+      // DeepL sometimes leaves ambiguous single words untranslated (e.g. treating
+      // "apple" as the brand name). If unusable, let the caller fall back to MyMemory.
+      return isUsableTranslation(translated, word) ? translated : null;
     }catch(err){
       return null; // falls through to MyMemory below
     }
@@ -700,13 +702,15 @@
 
   async function fetchJapaneseMeaningViaMyMemory(word){
     try{
-      const res = await fetchWithTimeout(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(word)}&langpair=en|ja`, 6000);
+      const res = await fetchWithTimeout(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(word)}&langpair=en|ja`, 4000);
       if(!res.ok) throw new Error('translate failed');
       const data = await res.json();
       const text = data && data.responseData && data.responseData.translatedText;
       if(!text) return null;
       if(/MYMEMORY WARNING|NO QUERY SPECIFIED/i.test(text)) return null;
-      return text;
+      // MyMemory sometimes returns romanized text (e.g. "onna-no-ko" instead of
+      // 女の子) or leaves the word untranslated — treat those as unusable too.
+      return isUsableTranslation(text, word) ? text : null;
     }catch(err){
       return null;
     }
@@ -720,16 +724,48 @@
     return fetchJapaneseMeaningViaMyMemory(word);
   }
 
+  // Same idea as fetchJapaneseMeaning, but for translating a full English
+  // sentence (e.g. a dictionary definition) rather than a single word. Reuses
+  // the same Worker/MyMemory pipeline since both accept arbitrary text.
+  async function translateSentenceToJapanese(text){
+    if(!text || !text.trim()) return null;
+    try{
+      if(DEEPL_PROXY_URL){
+        const headers = APP_SHARED_KEY ? { 'X-App-Key': APP_SHARED_KEY } : {};
+        const res = await fetchWithTimeout(`${DEEPL_PROXY_URL}?word=${encodeURIComponent(text)}`, 6000, { headers });
+        if(res.ok){
+          const data = await res.json();
+          const translated = data && data.translated;
+          if(translated && looksLikeJapanese(translated)) return translated;
+        }
+      }
+    }catch(err){ /* fall through to MyMemory below */ }
+    try{
+      // MyMemory's free tier caps requests around 500 bytes — trim just in case.
+      const trimmed = text.length > 480 ? text.slice(0, 480) : text;
+      const res = await fetchWithTimeout(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(trimmed)}&langpair=en|ja`, 6000);
+      if(!res.ok) return null;
+      const data = await res.json();
+      const translated = data && data.responseData && data.responseData.translatedText;
+      if(!translated) return null;
+      if(/MYMEMORY WARNING|NO QUERY SPECIFIED/i.test(translated)) return null;
+      return looksLikeJapanese(translated) ? translated : null;
+    }catch(err){
+      return null;
+    }
+  }
+
   // Combined lookup used for the inline suggestion list — returns a single display string
-  // that leads with the Japanese meaning (most useful at a glance) and adds the English
-  // definition underneath when available.
+  // that leads with the Japanese meaning (most useful at a glance) and adds a Japanese
+  // translation of the English definition underneath when available.
+  // Used for the time-limited "5 example answers" reveal — kept to just the
+  // word-level Japanese meaning (fast, single translation lookup) so it reliably
+  // finishes before the reveal window closes. The fuller definition+example
+  // translation (which is slower, since it's a second sequential API call) is
+  // reserved for the untimed 📖 dictionary lookup panel instead — see lookupWord().
   async function fetchCombinedMeaning(word){
-    const [ja, en] = await Promise.all([fetchJapaneseMeaning(word), fetchEnglishDefinition(word)]);
-    if(!ja && !en) return null;
-    let out = '';
-    if(ja) out += `🇯🇵 ${ja}`;
-    if(en){ out += (out ? '\n' : '') + `🇬🇧 ${en.text}`; }
-    return out;
+    const ja = await fetchJapaneseMeaning(word);
+    return ja ? `🇯🇵 ${ja}` : null;
   }
 
   async function lookupWord(word){
@@ -744,11 +780,22 @@
     if(ja){ html += `<div class="dictDef" style="font-size:16px; font-weight:700; text-align:center;">🇯🇵 ${ja}</div>`; }
     if(en){
       if(en.phonetic){ html += `<div class="dictPos">${en.phonetic}</div>`; }
+      // Translate every definition (and example) to Japanese in parallel first,
+      // then build the HTML once everything is ready.
+      const flatDefs = [];
+      en.meanings.forEach(m => m.definitions.forEach(d => flatDefs.push(d)));
+      const translations = await Promise.all(flatDefs.map(d => translateSentenceToJapanese(d.definition)));
+      const exampleTranslations = await Promise.all(flatDefs.map(d => d.example ? translateSentenceToJapanese(d.example) : Promise.resolve(null)));
+      let idx = 0;
       en.meanings.forEach(m=>{
         html += `<div class="dictPos">${m.partOfSpeech}</div>`;
         m.definitions.forEach((d,i)=>{
-          html += `<div class="dictDef"><span class="num">${i+1}.</span>${d.definition}`;
-          if(d.example){ html += `<div class="dictEx">例: ${d.example}</div>`; }
+          const defJa = translations[idx];
+          const exJa = exampleTranslations[idx];
+          idx++;
+          html += `<div class="dictDef"><span class="num">${i+1}.</span>${defJa || d.definition}`;
+          if(defJa){ html += `<div class="dictEx" style="font-style:normal; opacity:0.7;">EN: ${d.definition}</div>`; }
+          if(d.example){ html += `<div class="dictEx">例: ${exJa || d.example}</div>`; }
           html += `</div>`;
         });
       });
