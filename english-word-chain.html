@@ -156,6 +156,20 @@
   .scorelabel{font-size:11px; letter-spacing:0.2em; color:var(--indigo); margin-bottom:6px;}
   .installNote{ font-size:11px; color:#7a8098; text-align:center; line-height:1.7; padding-top:2px; }
 
+  .modeBlock{
+    text-align:left; background:rgba(47,143,107,0.08); border:1px solid #2c3145;
+    border-radius:10px; padding:10px 12px; margin-bottom:16px;
+  }
+  .modeLabel{ font-size:12.5px; font-weight:700; color:var(--accent); margin-bottom:8px; }
+  .modeRow{ display:flex; gap:6px; }
+  .modeBtn{
+    flex:1; background:#e9e1c8; border:1.5px solid var(--paper-dim); color:var(--text-ink);
+    border-radius:9px; padding:8px 4px; font-size:11.5px; font-weight:700; cursor:pointer;
+    font-family:'Zen Kaku Gothic New', sans-serif; line-height:1.4;
+  }
+  .modeBtn.selected{ background:var(--indigo); color:#f2ecda; border-color:var(--indigo); }
+  .modeNote{ font-size:11px; color:#5a5647; margin-top:8px; line-height:1.6; }
+
   .dictWord{ font-family:'Shippori Mincho', serif; font-size:24px; font-weight:800; text-align:center; margin-bottom:2px; }
   .dictPos{ text-align:center; font-size:12px; color:var(--indigo); font-weight:700; margin-bottom:12px; }
   .dictDef{ background:#e9e1c8; border-radius:10px; padding:10px 12px; margin-bottom:8px; font-size:13px; text-align:left; }
@@ -233,6 +247,15 @@
     ・🎤で音声入力もできます。<br><br>
     <b>このテスト版では10問まで挑戦できます。</b>ぜひ最後まで遊んでみて、感想を聞かせてください！
     </p>
+    <div class="modeBlock">
+      <div class="modeLabel">🎚️ モードを選ぶ</div>
+      <div class="modeRow">
+        <button class="modeBtn selected" data-mode="normal" id="modeNormalBtn">通常</button>
+        <button class="modeBtn" data-mode="hard1" id="modeHard1Btn">ハード①<br>(6文字以上)</button>
+        <button class="modeBtn" data-mode="hard2" id="modeHard2Btn">ハード②<br>(同じ文字で終わる)</button>
+      </div>
+      <div class="modeNote" id="modeNote">すべての単語が使えます。</div>
+    </div>
     <button class="primary" id="startBtn">はじめる</button>
   </div>
 </div>
@@ -314,18 +337,39 @@
   function lastLetter(w){ return w.trim().toLowerCase().slice(-1); }
   function isEnglishOnly(str){ return /^[A-Za-z]+$/.test(str); }
 
-  function suggestionsFor(letter, usedSet, count, cooldownMap){
+  const ALL_WORDS_ARR = Object.values(WORDS).flat();
+
+  function suggestionsFor(letter, usedSet, count, cooldownMap, minLength){
+    const minLen = minLength || 0;
     const cooled = cooldownMap && cooldownMap.size ? new Set(cooldownMap.keys()) : null;
-    let pool = (WORDS[letter] || []).filter(w => !usedSet.has(w) && !(cooled && cooled.has(w)));
+    let pool = (WORDS[letter] || []).filter(w => w.length >= minLen && !usedSet.has(w) && !(cooled && cooled.has(w)));
     // fall back to ignoring the cooldown if it would leave us with nothing to suggest
     if(pool.length < count){
-      pool = (WORDS[letter] || []).filter(w => !usedSet.has(w));
+      pool = (WORDS[letter] || []).filter(w => w.length >= minLen && !usedSet.has(w));
     }
     const shuffled = pool.slice().sort(()=>Math.random()-0.5);
     return shuffled.slice(0, count);
   }
-  function hasAnyWordFor(letter, usedSet){
-    return (WORDS[letter] || []).some(w => !usedSet.has(w));
+  function hasAnyWordFor(letter, usedSet, minLength){
+    const minLen = minLength || 0;
+    return (WORDS[letter] || []).some(w => w.length >= minLen && !usedSet.has(w));
+  }
+
+  // ハード②: words can start with ANY letter, but must all end with the same
+  // theme letter (fixed by whichever letter the first word of the game ended
+  // with). These search across the whole word list (not just one starting
+  // letter's bucket), grouped by their ENDING letter instead.
+  function suggestionsEndingWith(letter, usedSet, count, cooldownMap){
+    const cooled = cooldownMap && cooldownMap.size ? new Set(cooldownMap.keys()) : null;
+    let pool = ALL_WORDS_ARR.filter(w => w[w.length-1] === letter && !usedSet.has(w) && !(cooled && cooled.has(w)));
+    if(pool.length < count){
+      pool = ALL_WORDS_ARR.filter(w => w[w.length-1] === letter && !usedSet.has(w));
+    }
+    const shuffled = pool.slice().sort(()=>Math.random()-0.5);
+    return shuffled.slice(0, count);
+  }
+  function hasAnyWordEndingWith(letter, usedSet){
+    return ALL_WORDS_ARR.some(w => w[w.length-1] === letter && !usedSet.has(w));
   }
 
   // ================= TIMER SCHEDULE =================
@@ -338,6 +382,9 @@
 
   // ================= STATE =================
   let state = null;
+  let gameMode = 'normal'; // 'normal' | 'hard1' (6+ letter words only) | 'hard2' (starts & ends with same letter)
+  const MODE_MIN_LENGTH = { normal: 0, hard1: 6, hard2: 0 };
+  const MODE_END_LETTER_THEME = { normal: false, hard1: false, hard2: true };
   let isPremium = false;
   let lookupCount = 0;
   const FREE_ROUNDS = 10;
@@ -447,11 +494,14 @@
 
   // ================= GAME CORE =================
   function startGame(){
+    const minLength = MODE_MIN_LENGTH[gameMode] || 0;
+    const endLetterMode = !!MODE_END_LETTER_THEME[gameMode];
     state = {
       correctCount:0, roundCount:0, usedWords:new Set(), chainDisplay:[],
-      requiredLetter:null, timeLeft:0, alive:true, awaitingReveal:false,
+      requiredLetter:null, targetEndLetter:null, timeLeft:0, alive:true, awaitingReveal:false,
       suggestionCooldown:new Map(), // word -> rounds remaining before it can be suggested again
-      timeoutCount:0 // total timeouts this game (not reset by correct answers); 2 total ends the game
+      timeoutCount:0, // total timeouts this game (not reset by correct answers); 2 total ends the game
+      mode: gameMode, minLength, endLetterMode
     };
     els.startOverlay.style.display = 'none';
     els.overOverlay.style.display = 'none';
@@ -479,14 +529,26 @@
       pauseForUpgrade();
       return;
     }
-    // if the required starting letter has no words left, treat as a natural "chain complete" and reset
-    if(state.requiredLetter && !hasAnyWordFor(state.requiredLetter, state.usedWords)){
-      setFeedback(`「${state.requiredLetter.toUpperCase()}」で始まる単語がなくなりました。新しいチェーンを始めましょう！`, true);
-      state.requiredLetter = null;
+    if(state.endLetterMode){
+      // hard②: theme is which letter every word must END with (fixed by the
+      // first word played), not which letter the next word starts with.
+      if(state.targetEndLetter && !hasAnyWordEndingWith(state.targetEndLetter, state.usedWords)){
+        setFeedback(`「${state.targetEndLetter.toUpperCase()}」で終わる単語がなくなりました。新しいテーマを始めましょう！`, true);
+        state.targetEndLetter = null;
+      }
+      els.ruleText.innerHTML = state.targetEndLetter
+        ? `<b>${state.targetEndLetter.toUpperCase()}</b> で終わる単語`
+        : `どの単語からでもOK(最初の単語の最後の文字がテーマになります)`;
+    } else {
+      // if the required starting letter has no words left, treat as a natural "chain complete" and reset
+      if(state.requiredLetter && !hasAnyWordFor(state.requiredLetter, state.usedWords, state.minLength)){
+        setFeedback(`「${state.requiredLetter.toUpperCase()}」で始まる単語がなくなりました。新しいチェーンを始めましょう！`, true);
+        state.requiredLetter = null;
+      }
+      els.ruleText.innerHTML = state.requiredLetter
+        ? `<b>${state.requiredLetter.toUpperCase()}</b> から始まる単語`
+        : `どの単語からでもOK`;
     }
-    els.ruleText.innerHTML = state.requiredLetter
-      ? `<b>${state.requiredLetter.toUpperCase()}</b> から始まる単語`
-      : `どの単語からでもOK`;
     state.timeLeft = timeForCorrectCount(state.correctCount);
     updateTimerDisplay();
     els.suggestArea.innerHTML = '';
@@ -605,15 +667,20 @@
     // automatically by the system — they are not something the player answered,
     // so the game does not continue afterward.
     decayCooldown(state.suggestionCooldown);
-    const letter = state.requiredLetter;
     let suggestions;
-    if(letter){
-      suggestions = suggestionsFor(letter, state.usedWords, 5, state.suggestionCooldown);
+    if(state.endLetterMode){
+      const letter = state.targetEndLetter || Object.keys(WORDS)[Math.floor(Math.random()*Object.keys(WORDS).length)];
+      suggestions = suggestionsEndingWith(letter, state.usedWords, 5, state.suggestionCooldown);
     } else {
-      // first turn timeout: just show 5 generally common starter words
-      const anyLetters = Object.keys(WORDS);
-      const pickLetter = anyLetters[Math.floor(Math.random()*anyLetters.length)];
-      suggestions = suggestionsFor(pickLetter, state.usedWords, 5, state.suggestionCooldown);
+      const letter = state.requiredLetter;
+      if(letter){
+        suggestions = suggestionsFor(letter, state.usedWords, 5, state.suggestionCooldown, state.minLength);
+      } else {
+        // first turn timeout: just show 5 generally common starter words
+        const anyLetters = Object.keys(WORDS);
+        const pickLetter = anyLetters[Math.floor(Math.random()*anyLetters.length)];
+        suggestions = suggestionsFor(pickLetter, state.usedWords, 5, state.suggestionCooldown, state.minLength);
+      }
     }
 
     state.roundCount += 1;
@@ -652,8 +719,15 @@
     const norm = raw.toLowerCase();
 
     if(state.usedWords.has(norm)){ setFeedback('その単語はもう使いました。別の単語をどうぞ', false); sndWrong(); return; }
-    if(state.requiredLetter && firstLetter(norm) !== state.requiredLetter){
+    if(state.endLetterMode){
+      if(state.targetEndLetter && lastLetter(norm) !== state.targetEndLetter){
+        setFeedback(`「${state.targetEndLetter.toUpperCase()}」で終わる単語を入力してください`, false); sndWrong(); return;
+      }
+    } else if(state.requiredLetter && firstLetter(norm) !== state.requiredLetter){
       setFeedback(`「${state.requiredLetter.toUpperCase()}」から始まる単語を入力してください`, false); sndWrong(); return;
+    }
+    if(state.minLength && norm.length < state.minLength){
+      setFeedback(`不正解: このモードでは${state.minLength}文字以上の単語が必要です`, false); sndWrong(); return;
     }
 
     let valid = ALL_WORDS.has(norm);
@@ -674,7 +748,11 @@
     clearInterval(timerHandle);
     state.usedWords.add(norm);
     addChip(raw);
-    state.requiredLetter = lastLetter(norm);
+    if(state.endLetterMode){
+      if(!state.targetEndLetter) state.targetEndLetter = lastLetter(norm); // theme fixed by the first word
+    } else {
+      state.requiredLetter = lastLetter(norm);
+    }
     state.correctCount += 1;
     state.roundCount += 1;
     updateHUD();
@@ -689,6 +767,24 @@
   els.wordInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') submitWord(); });
   els.wordInput.addEventListener('input', ()=> setFeedback('', false));
 
+  const modeButtons = {
+    normal: document.getElementById('modeNormalBtn'),
+    hard1: document.getElementById('modeHard1Btn'),
+    hard2: document.getElementById('modeHard2Btn'),
+  };
+  const modeNotes = {
+    normal: 'すべての単語が使えます。',
+    hard1: '6文字以上の単語しか使えません(例: teacher)。正解例も6文字以上のみ表示されます。',
+    hard2: '最初に入力した単語の「最後の文字」がテーマになり、以降はずっとその文字で終わる単語をつなぎます(例: kickで始めたら、book, talk, walkなど「k」で終わる単語が続きます)。単語の始まりの文字は自由です。',
+  };
+  function selectMode(mode){
+    gameMode = mode;
+    Object.entries(modeButtons).forEach(([key, btn]) => btn.classList.toggle('selected', key === mode));
+    document.getElementById('modeNote').textContent = modeNotes[mode];
+  }
+  modeButtons.normal.addEventListener('click', ()=> selectMode('normal'));
+  modeButtons.hard1.addEventListener('click', ()=> selectMode('hard1'));
+  modeButtons.hard2.addEventListener('click', ()=> selectMode('hard2'));
   document.getElementById('startBtn').addEventListener('click', startGame);
   document.getElementById('retryBtn').addEventListener('click', ()=>{
     els.overOverlay.style.display = 'none';
