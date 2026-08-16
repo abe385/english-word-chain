@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>英単語しりとり - 学習版</title>
+<meta name="theme-color" content="#12141c">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#12141c; --ink-2:#1b1e2a; --paper:#f1ead6; --paper-dim:#e4dcc4;
+    --indigo:#2e5a6e; --indigo-lt:#4d8299; --accent:#2f8f6b; --accent-dark:#236b50;
+    --gold:#c9a227; --text-ink:#26241d; --danger:#c0392b; --ok:#3d7a58;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;height:100%;
+    background:
+      radial-gradient(circle at 15% 8%, rgba(77,130,153,0.18), transparent 45%),
+      radial-gradient(circle at 85% 92%, rgba(47,143,107,0.12), transparent 40%),
+      var(--ink);
+    color:var(--paper);
+    font-family:'Zen Kaku Gothic New', sans-serif;
+    -webkit-font-smoothing:antialiased;
+    -webkit-user-select:none; user-select:none;
+  }
+  input, input::selection{ -webkit-user-select:text; user-select:text; }
+  body{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+  @media (prefers-reduced-motion: reduce){ *{animation-duration:0.001ms !important; transition-duration:0.001ms !important;} }
+
+  .app{ width:100%; max-width:460px; display:flex; flex-direction:column; gap:14px; }
+  .header{ text-align:center; position:relative; padding-bottom:8px; }
+  .topRow{ display:flex; flex-wrap:wrap; justify-content:center; gap:6px; }
+  .iconBtn{
+    background:var(--ink-2); border:1px solid #2c3145; color:var(--paper);
+    border-radius:10px; padding:7px 10px; font-size:11px; font-weight:700;
+    cursor:pointer; display:flex; align-items:center; gap:5px; white-space:nowrap;
+  }
+  .iconBtn:hover{border-color:var(--gold);}
+  .iconBtn.active{ border-color:var(--gold); color:var(--gold); }
+  .header .eyebrow{ letter-spacing:0.3em; font-size:11px; color:var(--indigo-lt); font-weight:700; }
+  .header h1{ font-family:'Shippori Mincho', serif; font-size:25px; font-weight:800; margin:4px 0 2px; color:var(--paper); }
+  .header .sub{ font-size:12px; color:#9aa3bd; }
+  .header::after{ content:""; display:block; width:64px;height:2px; background:var(--gold); margin:10px auto 0; opacity:0.7; }
+
+  .status{ display:flex; justify-content:space-between; gap:8px; }
+  .status .box{ flex:1; background:var(--ink-2); border:1px solid #2c3145; border-radius:10px; padding:8px 6px; text-align:center; }
+  .status .box .label{ font-size:10px; color:#8890a8; letter-spacing:0.08em; }
+  .status .box .value{ font-family:'Shippori Mincho', serif; font-size:19px; font-weight:700; color:var(--gold); margin-top:2px; }
+  .status .box.timer .value{color:var(--paper);}
+  .status .box.timer.warn .value{color:var(--danger);}
+
+  .stampWrap{ display:flex; justify-content:center; padding:4px 0 0; }
+  .stamp{
+    position:relative; background:var(--paper); color:var(--text-ink); border-radius:14px;
+    padding:16px 18px; width:100%; box-shadow:0 8px 22px rgba(0,0,0,0.35); border:1px solid var(--paper-dim);
+    text-align:center;
+  }
+  .stamp .kicker{ font-size:11px; letter-spacing:0.15em; color:var(--accent-dark); font-weight:700; }
+  .stamp .rule{ font-family:'Shippori Mincho', serif; font-size:22px; font-weight:800; margin-top:6px; }
+  .stamp .rule b{ color:var(--accent-dark); font-size:26px; }
+
+  .chainArea{
+    background:linear-gradient(180deg, rgba(241,234,214,0.05), rgba(241,234,214,0.02));
+    border:1px solid #2c3145; border-radius:12px; padding:10px; max-height:110px; overflow-y:auto;
+  }
+  .chainArea::-webkit-scrollbar{width:6px;}
+  .chainArea::-webkit-scrollbar-thumb{background:#3a405c;border-radius:4px;}
+  .chain{ display:flex; flex-wrap:wrap; gap:6px 6px; align-items:center; }
+  .chip{ background:var(--ink-2); border:1px solid #37405e; color:var(--paper); padding:5px 10px; border-radius:999px; font-size:13px; font-weight:500; }
+  .arrow{color:#5b6488; font-size:12px;}
+  .chainArea .empty{ color:#6c7290; font-size:13px; padding:6px 2px; }
+
+  .inputRow{ display:flex; gap:8px; }
+  .inputRow input{
+    flex:1; background:var(--ink-2); border:1.5px solid #3a405e; color:var(--paper);
+    border-radius:10px; padding:13px 14px; font-size:17px; outline:none; transition:border-color 150ms ease;
+  }
+  .inputRow input:focus{ border-color:var(--gold); }
+  .inputRow input::placeholder{color:#666e8c;}
+  .inputRow button{
+    border:none; border-radius:10px; padding:0 16px; font-size:14px; font-weight:700; cursor:pointer;
+    font-family:'Zen Kaku Gothic New', sans-serif; transition:background 150ms ease, transform 100ms ease;
+  }
+  .inputRow button:active{transform:scale(0.96);}
+  .inputRow button:disabled{opacity:0.4; cursor:default;}
+  #answerBtn{ background:var(--accent); color:#fff; }
+  #answerBtn:hover{ background:var(--accent-dark); }
+  #micBtn{ background:var(--indigo); color:#fff; padding:0 14px; font-size:18px; }
+  #micBtn:hover{ background:var(--indigo-lt); }
+  #micBtn.listening{ background:var(--danger); animation:micPulse 1s ease-in-out infinite; }
+  @keyframes micPulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(192,57,43,0.55);} 50%{ box-shadow:0 0 0 8px rgba(192,57,43,0);} }
+
+  .toolRow{ display:flex; gap:8px; }
+  .toolBtn{
+    flex:1; background:var(--ink-2); border:1px solid #37405e; color:var(--paper); border-radius:10px;
+    padding:9px 8px; font-size:12px; font-weight:700; cursor:pointer;
+  }
+  .toolBtn:hover{ border-color:var(--gold); }
+
+  .dictBlock{
+    background:rgba(47,143,107,0.08); border:1px solid #2c3145; border-radius:12px; padding:10px 12px 12px;
+  }
+  .dictLabel{ font-size:12.5px; font-weight:700; color:var(--accent); margin-bottom:2px; }
+  .dictNote{ font-size:11px; color:#8890a8; line-height:1.5; margin-bottom:8px; }
+  #lookupBtn{ background:var(--accent); color:#fff; white-space:nowrap; }
+  #lookupBtn:hover{ background:var(--accent-dark); }
+
+  .feedback{ min-height:34px; font-size:14px; text-align:center; color:var(--danger); font-weight:700; line-height:1.5; }
+  .feedback.ok{color:var(--ok);}
+  .hint{ text-align:center; font-size:11px; color:#666e8c; line-height:1.6; }
+
+  .suggestBox{
+    background:var(--ink-2); border:1px solid var(--gold); border-radius:10px; padding:10px 12px; font-size:13px;
+  }
+  .suggestBox .lbl{ color:var(--gold); font-weight:700; margin-bottom:8px; }
+  .suggestBox .wordList{ display:flex; flex-direction:column; gap:8px; }
+  .suggestBox .wordRow{
+    display:flex; align-items:baseline; gap:8px; padding:6px 8px;
+    background:#232842; border-radius:8px; flex-wrap:wrap;
+  }
+  .suggestBox .wordRow .w{
+    background:#2a2f42; border-radius:999px; padding:3px 10px; font-weight:700; color:var(--gold); flex-shrink:0;
+  }
+  .suggestBox .wordRow .m{ font-size:12.5px; color:#c9d2e8; line-height:1.5; flex:1; min-width:120px; }
+
+  .overlay{
+    position:fixed; inset:0; background:rgba(10,11,17,0.82); display:flex; align-items:center;
+    justify-content:center; padding:20px; z-index:10; backdrop-filter:blur(2px); overflow-y:auto;
+  }
+  .card{
+    background:var(--paper); color:var(--text-ink); border-radius:16px; padding:28px 24px;
+    max-width:380px; width:100%; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,0.5);
+  }
+  .card h2{ font-family:'Shippori Mincho', serif; font-size:22px; margin:0 0 8px; }
+  .card p{ font-size:13.5px; color:#4a4a3f; line-height:1.7; margin:0 0 16px; text-align:left; }
+  .card button.primary{
+    background:var(--accent); color:#fff; border:none; border-radius:10px; padding:13px 26px;
+    font-size:15px; font-weight:700; cursor:pointer; width:100%; font-family:'Zen Kaku Gothic New', sans-serif;
+  }
+  .card button.primary:hover{background:var(--accent-dark);}
+  .closeBtn{
+    margin-top:8px; background:none; border:1px solid var(--indigo); color:var(--indigo);
+    border-radius:10px; padding:10px; width:100%; font-weight:700; cursor:pointer;
+    font-family:'Zen Kaku Gothic New', sans-serif;
+  }
+  .bigscore{ font-family:'Shippori Mincho', serif; font-size:40px; font-weight:800; color:var(--accent-dark); margin:6px 0 2px; }
+  .scorelabel{font-size:11px; letter-spacing:0.2em; color:var(--indigo); margin-bottom:6px;}
+  .installNote{ font-size:11px; color:#7a8098; text-align:center; line-height:1.7; padding-top:2px; }
+
+  .dictWord{ font-family:'Shippori Mincho', serif; font-size:24px; font-weight:800; text-align:center; margin-bottom:2px; }
+  .dictPos{ text-align:center; font-size:12px; color:var(--indigo); font-weight:700; margin-bottom:12px; }
+  .dictDef{ background:#e9e1c8; border-radius:10px; padding:10px 12px; margin-bottom:8px; font-size:13px; text-align:left; }
+  .dictDef .num{ font-weight:800; color:var(--accent-dark); margin-right:4px; }
+  .dictEx{ font-size:12px; color:#5a5647; font-style:italic; margin-top:4px; }
+
+  .usageNote{ font-size:11px; color:var(--indigo); text-align:center; margin-top:-6px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <div class="topRow">
+      <button class="iconBtn" id="tierBtn">🆓 <span id="tierLabel">無料版</span></button>
+      <button class="iconBtn" id="soundBtn">🔊</button>
+    </div>
+    <div class="eyebrow">ENGLISH WORD CHAIN</div>
+    <h1>英単語しりとり 学習版</h1>
+    <div class="sub">一人で挑戦。答えたら即判定、わからない単語は意味も調べられます。</div>
+  </div>
+
+  <div class="status">
+    <div class="box"><div class="label">正解数</div><div class="value" id="correctVal">0</div></div>
+    <div class="box"><div class="label">ラウンド</div><div class="value" id="roundVal">0</div></div>
+    <div class="box timer" id="timerBox"><div class="label">残り秒</div><div class="value" id="timerVal">--</div></div>
+  </div>
+
+  <div class="stampWrap">
+    <div class="stamp">
+      <div class="kicker">つぎの単語のはじまりは…</div>
+      <div class="rule" id="ruleText">スタート待ち</div>
+    </div>
+  </div>
+
+  <div class="chainArea">
+    <div class="chain" id="chain"><div class="empty" id="chainEmptyText">まだ単語がありません</div></div>
+  </div>
+
+  <div class="inputRow">
+    <input id="wordInput" type="text" placeholder="英単語を入力" autocomplete="off" disabled>
+    <button id="micBtn" disabled title="音声入力">🎤</button>
+    <button id="answerBtn" disabled>回答</button>
+  </div>
+  <div class="toolRow">
+    <button class="toolBtn" id="handsFreeBtn" disabled>🎙️ 常時音声: OFF</button>
+  </div>
+
+  <div class="dictBlock">
+    <div class="dictLabel">📖 英和辞書で意味を調べる(回答とは別に使えます)</div>
+    <div class="dictNote">わからない単語があれば、ここに入力して日本語の意味・英語の定義を確認できます。</div>
+    <div class="inputRow">
+      <input id="dictInput" type="text" placeholder="調べたい単語を入力(例: apple)" autocomplete="off" disabled>
+      <button id="lookupBtn" disabled>調べる <span id="lookupCountLabel"></span></button>
+    </div>
+  </div>
+
+  <div class="feedback" id="feedback"></div>
+  <div id="suggestArea"></div>
+  <div class="hint" id="micNotice" style="display:none;"></div>
+  <div class="hint">回答できたら「回答」ボタンで即判定。2回連続で時間切れになると正解例を5つ表示します。</div>
+</div>
+
+<div class="overlay" id="startOverlay">
+  <div class="card">
+    <h2>英単語しりとり 学習版</h2>
+    <p>
+    英語のWord Chain(しりとり)で語彙力を鍛えるゲームです。<br><br>
+    ・制限時間は60秒からスタート。3問正解ごとに時間が短くなり、9問正解すると30秒固定になります。<br>
+    ・「回答」ボタンでいつでも正誤判定。<br>
+    ・2回連続で時間切れになった場合は、正解例を5つ表示します。<br>
+    ・わからない単語は📖で意味・使い方を調べられます。<br>
+    ・🎤で音声入力もできます。<br><br>
+    <b>🆓 無料版:</b> 3ラウンド・辞書検索3回まで無料<br>
+    <b>🌟 プレミアム:</b> ラウンド数・辞書検索とも無制限
+    </p>
+    <button class="primary" id="startBtn">はじめる</button>
+  </div>
+</div>
+
+<div class="overlay" id="overOverlay" style="display:none;">
+  <div class="card">
+    <h2 id="overTitle">結果</h2>
+    <div class="bigscore" id="overCorrect">0</div>
+    <div class="scorelabel">正解数(全<span id="overRounds">0</span>ラウンド中)</div>
+    <button class="primary" id="retryBtn">もう一度あそぶ</button>
+  </div>
+</div>
+
+<div class="overlay" id="upgradeOverlay" style="display:none;">
+  <div class="card">
+    <h2 id="upgradeTitle">🌟 プレミアムにアップグレード</h2>
+    <p id="upgradeBody">無料版はここまでです。プレミアムにアップグレードすると、ラウンド数・辞書検索回数が無制限になります。</p>
+    <button class="primary" id="fakeBuyBtn">アップグレードする(デモ・¥480)</button>
+    <button class="closeBtn" id="closeUpgradeBtn">閉じる</button>
+    <div class="installNote">※ これはデモ表示です。実際の課金・決済は発生しません。本番運用時はApple/GoogleのIn-App Purchase等に置き換える想定です。</div>
+  </div>
+</div>
+
+<div class="overlay" id="dictOverlay" style="display:none;">
+  <div class="card">
+    <div id="dictContent">
+      <p style="text-align:center;">読み込み中…</p>
+    </div>
+    <button class="closeBtn" id="closeDictBtn">閉じる</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  // ================= WORD LIST (learner-friendly common English vocabulary) =================
+  const WORDS = {
+    a:["apple","animal","answer","action","artist","autumn","airport","ability","absent","accept","active","adult","advice","afraid","agree","air","alarm","alive","allow","almost","alone","along","already","always","amazing","among","amount","angry","ankle","apart","area","argue","arm","army","around","arrive","art","ask","asleep","attack","attend","aunt","avoid","awake","award","aware","away","awful"],
+    b:["baby","back","bad","bag","balance","ball","banana","band","bank","base","basket","bath","beach","bean","bear","beautiful","become","bed","before","begin","behind","believe","bell","belong","below","belt","bench","bend","best","better","between","beyond","bicycle","big","bird","birth","bite","black","blame","blank","blanket","blind","block","blood","blow","blue","board","boat","body","boil","bone","book","border","born","borrow","boss","both","bottle","bottom","bounce","bowl","box","boy","brain","branch","brave","bread","break","breakfast","breath","breathe","brick","bridge","brief","bright","bring","broad","broken","brother","brown","brush","build","burn","bus","business","busy","butter","button","buy"],
+    c:["cabin","cake","calendar","call","calm","camera","camp","can","cancel","candle","capital","captain","car","card","care","careful","careless","carpet","carry","case","cash","castle","cat","catch","cause","ceiling","celebrate","cell","center","century","certain","chain","chair","chalk","chance","change","character","charge","chart","chase","cheap","check","cheek","cheese","chef","chest","chicken","child","chin","chip","choice","choose","church","circle","city","claim","class","clean","clear","clever","click","climb","clock","close","cloth","cloud","club","clue","coach","coast","coat","code","coffee","coin","cold","collect","college","color","comb","come","comfort","common","company","compare","compete","complain","complete","computer","concern","condition","connect","consider","contain","continue","control","cook","cool","copy","corner","correct","cost","cotton","cough","count","country","couple","courage","course","cousin","cover","cow","crack","craft","crash","crazy","cream","create","credit","crime","cross","crowd","cry","culture","cup","curious","current","curtain","curve","custom","cut","cute"],
+    d:["dad","daily","damage","dance","danger","dark","data","date","daughter","dawn","day","dead","deal","dear","death","debate","decide","decision","deep","defeat","defend","define","degree","delay","deliver","demand","dentist","deny","depend","describe","desert","design","desire","desk","destroy","detail","develop","device","dial","diamond","diary","dictionary","die","diet","difference","different","difficult","dig","dinner","direct","direction","dirt","dirty","disagree","disappear","discover","discuss","disease","dish","distance","divide","doctor","document","dog","dollar","door","double","doubt","down","draw","dream","dress","drink","drive","drop","drug","dry","duck","during","dust","duty"],
+    e:["each","eager","ear","early","earn","earth","ease","east","easy","eat","echo","edge","educate","effect","effort","egg","eight","either","elbow","elder","elect","electric","elephant","else","email","embarrass","emergency","emotion","empty","enable","encourage","end","enemy","energy","engine","enjoy","enough","enter","entire","entrance","envelope","environment","equal","equip","error","escape","especially","essay","event","ever","every","evidence","evil","exact","examine","example","excellent","except","exchange","excite","excuse","exercise","exist","exit","expand","expect","expensive","experience","expert","explain","explore","express","extra","extreme","eye"],
+    f:["fabric","face","fact","factory","fail","fair","faith","fall","false","familiar","family","famous","fan","far","farm","fast","fat","father","fault","favor","fear","feather","feature","feed","feel","female","fence","few","field","fight","figure","fill","film","final","find","fine","finger","finish","fire","firm","first","fish","fit","five","fix","flag","flame","flat","flavor","flee","flight","float","flood","floor","flow","flower","fly","focus","fold","follow","food","fool","foot","force","foreign","forest","forever","forget","forgive","form","formal","former","fortune","forward","four","frame","free","freeze","fresh","friend","frighten","from","front","frozen","fruit","fuel","full","fun","funny","furniture","further","future"],
+    g:["gain","garden","gas","gate","gather","general","generous","gentle","get","ghost","gift","girl","give","glad","glass","global","glove","glow","glue","goal","goat","gold","good","goodbye","government","grade","grain","grand","grandfather","grandmother","grant","grape","grass","grateful","gray","great","green","greet","grocery","ground","group","grow","guard","guess","guest","guide","guilty","guitar","gym"],
+    h:["habit","hair","half","hall","hammer","hand","handle","hang","happen","happy","hard","harm","harvest","hat","hate","have","head","health","hear","heart","heat","heaven","heavy","height","hello","help","here","hero","hide","high","hill","history","hit","hobby","hold","hole","holiday","home","honest","honey","hope","horn","horse","hospital","host","hot","hotel","hour","house","however","huge","human","humor","hundred","hungry","hunt","hurry","hurt","husband"],
+    i:["ice","idea","ideal","identify","if","ignore","ill","image","imagine","immediate","important","impossible","improve","include","income","increase","indeed","indoor","industry","infant","inform","injure","inside","instead","instrument","insult","insurance","intend","interest","interrupt","into","introduce","invent","invest","invite","iron","island","issue","item"],
+    j:["jacket","jail","jar","jaw","jazz","jealous","jeans","jelly","jewel","job","join","joke","journal","journey","joy","judge","juice","jump","jungle","junior","just","justice"],
+    k:["keen","keep","kettle","key","keyboard","kick","kid","kill","kind","king","kiss","kitchen","kite","kitten","knee","knife","knock","know","knowledge","known"],
+    l:["label","labor","lack","ladder","lady","lake","lamp","land","language","large","last","late","laugh","launch","law","lawyer","lay","lazy","lead","leader","leaf","leak","lean","learn","least","leather","leave","left","leg","legal","lemon","length","less","lesson","letter","level","library","lid","lie","life","lift","light","like","limit","line","link","lion","lip","liquid","list","listen","little","live","load","loan","local","lock","log","lonely","long","look","loose","lose","loss","lost","lot","loud","love","low","loyal","luck","lunch"],
+    m:["machine","mad","magazine","magic","mail","main","major","make","male","mall","man","manage","manner","many","map","march","mark","market","marriage","marry","mask","mass","master","match","material","math","matter","maybe","meal","mean","measure","meat","medal","media","medicine","meet","melt","member","memory","mention","menu","mess","message","metal","method","middle","might","mild","mile","milk","mind","mine","minor","minute","mirror","miss","mistake","mix","model","modern","moment","money","monitor","month","mood","moon","moral","more","morning","mother","motion","mountain","mouse","mouth","move","movie","much","mud","music","must","mystery"],
+    n:["nail","name","narrow","nation","native","natural","nature","near","neat","necessary","neck","need","needle","negative","neighbor","neither","nephew","nerve","nest","net","network","never","new","news","next","nice","night","nine","noble","noise","noisy","none","noon","nor","normal","north","nose","not","note","nothing","notice","novel","now","nowhere","number","nurse","nut"],
+    o:["obey","object","observe","obtain","obvious","occasion","occur","ocean","odd","off","offer","office","officer","official","often","oil","okay","old","olive","once","one","onion","online","only","onto","open","operate","opinion","opportunity","oppose","option","orange","order","ordinary","organ","organize","origin","other","otherwise","ought","our","out","outdoor","outside","oven","over","owe","own","oxygen"],
+    p:["pace","pack","page","pain","paint","pair","palace","pale","palm","pan","panic","pants","paper","parent","park","part","partner","party","pass","passage","passenger","past","path","patient","pattern","pause","pay","payment","peace","peak","pear","peel","pen","pencil","people","pepper","perfect","perform","perhaps","period","permit","person","pet","phone","photo","phrase","physical","piano","pick","picture","piece","pig","pile","pill","pilot","pin","pink","pipe","pity","place","plain","plan","plane","planet","plant","plastic","plate","play","please","pleasant","plenty","plot","plus","pocket","poem","point","poison","pole","police","policy","polite","political","pond","pool","poor","popular","population","port","portion","position","positive","possess","possible","post","pot","potato","pour","powder","power","practice","praise","pray","predict","prefer","prepare","present","president","press","pretend","pretty","prevent","previous","price","pride","priest","primary","prince","print","prison","private","prize","probably","problem","process","produce","product","profit","program","progress","project","promise","prompt","proof","proper","property","protect","proud","prove","provide","public","publish","pull","pump","punish","pupil","puppy","purchase","pure","purple","purpose","push","put","puzzle"],
+    q:["quality","quantity","quarrel","quarter","queen","question","quick","quiet","quilt","quit","quite","quiz","quote"],
+    r:["rabbit","race","radio","rail","rain","raise","range","rank","rapid","rare","rate","rather","raw","reach","react","read","ready","real","realize","really","reason","receive","recent","recipe","recognize","record","recover","red","reduce","refer","reflect","refuse","region","regret","regular","reject","relate","relax","release","relief","religion","rely","remain","remark","remember","remind","remove","rent","repair","repeat","replace","reply","report","represent","request","require","rescue","research","resist","resource","respect","respond","rest","result","retire","return","reveal","review","reward","rice","rich","ride","right","ring","rise","risk","river","road","rob","rock","role","roll","roof","room","root","rope","rose","rough","round","route","row","royal","rub","rubber","rude","rug","ruin","rule","run","rural","rush"],
+    s:["sad","safe","sail","salad","salary","sale","salt","same","sample","sand","satisfy","sauce","save","say","scale","scared","scene","schedule","scholar","school","science","scissors","score","scratch","scream","screen","sea","search","season","seat","second","secret","section","secure","see","seed","seek","seem","select","self","sell","send","senior","sense","sentence","separate","series","serious","servant","serve","service","session","set","settle","seven","several","severe","sew","shade","shadow","shake","shallow","shame","shape","share","sharp","shave","sheep","sheet","shelf","shell","shelter","shift","shine","ship","shirt","shock","shoe","shoot","shop","shore","short","shot","should","shoulder","shout","show","shower","shy","sick","side","sight","sign","signal","silence","silk","silly","silver","similar","simple","since","sing","single","sink","sir","sister","sit","site","situation","six","size","skill","skin","skirt","sky","sleep","slice","slide","slight","slim","slip","slow","small","smart","smell","smile","smoke","smooth","snake","snow","so","soap","social","society","sock","soft","soil","soldier","solid","solution","solve","some","someone","something","sometimes","somewhere","son","song","soon","sorry","sort","soul","sound","soup","source","south","space","speak","special","speech","speed","spell","spend","spirit","spite","split","spoil","sport","spot","spread","spring","square","squeeze","stable","staff","stage","stair","stamp","stand","standard","star","stare","start","state","station","stay","steady","steal","steam","steel","steep","step","stick","still","stir","stock","stomach","stone","stop","store","storm","story","straight","strange","stranger","strategy","straw","stream","street","strength","stress","stretch","strike","string","strip","strong","structure","struggle","student","study","stuff","stupid","style","subject","substance","succeed","success","such","sudden","suffer","sugar","suggest","suit","summer","sun","super","supply","support","suppose","sure","surface","surprise","surround","survey","survive","suspect","swallow","swear","sweat","sweater","sweep","sweet","swim","swing","switch","symbol","system"],
+    t:["table","tail","take","tale","talent","talk","tall","tank","tape","target","task","taste","tax","tea","teach","team","tear","technology","teenager","telephone","television","tell","temperature","temple","ten","tend","tennis","tent","term","terrible","test","text","than","thank","that","theater","then","theory","there","these","thick","thin","thing","think","third","thirst","this","those","though","thought","thousand","thread","threat","three","throat","through","throw","thumb","thunder","ticket","tide","tie","tiger","tight","time","tiny","tip","tire","title","to","today","toe","together","tomorrow","tone","tongue","tonight","tool","tooth","top","topic","total","touch","tough","tour","toward","towel","tower","town","toy","trace","track","trade","tradition","traffic","train","transfer","translate","transport","trap","trash","travel","treat","treatment","tree","trend","trial","triangle","trick","trip","trouble","truck","true","trust","truth","try","tube","tune","tunnel","turn","twelve","twenty","twice","twin","twist","two","type","typical"],
+    u:["ugly","umbrella","unable","uncle","under","understand","uniform","union","unique","unit","unite","universe","university","unknown","unless","unlike","until","unusual","up","update","upon","upper","upset","upstairs","urban","urge","urgent","use","useful","useless","usual","usually"],
+    v:["vacation","vague","valid","valley","valuable","value","van","variety","various","vary","vast","vegetable","vehicle","version","very","vessel","victim","victory","video","view","village","violent","visible","vision","visit","visual","vital","voice","volume","vote","voyage"],
+    w:["wage","wait","wake","walk","wall","wander","want","war","warm","warn","wash","waste","watch","water","wave","way","weak","wealth","weapon","wear","weather","wedding","week","weigh","weight","welcome","well","west","wet","whale","what","wheat","wheel","when","where","whether","which","while","whisper","white","who","whole","why","wide","wife","wild","will","win","wind","window","wine","wing","winner","winter","wire","wise","wish","with","within","without","witness","woman","wonder","wood","wool","word","work","world","worry","worse","worth","would","wound","wrap","wrist","write","wrong"],
+    x:["xerox","xylophone","xray"],
+    y:["yard","yarn","year","yell","yellow","yes","yesterday","yet","yield","yoga","young","your","yourself","youth"],
+    z:["zebra","zero","zone","zoo"]
+  };
+  const ALL_WORDS = new Set(Object.values(WORDS).flat());
+
+  function firstLetter(w){ return w.trim().toLowerCase()[0]; }
+  function lastLetter(w){ return w.trim().toLowerCase().slice(-1); }
+  function isEnglishOnly(str){ return /^[A-Za-z]+$/.test(str); }
+
+  function suggestionsFor(letter, usedSet, count, cooldownMap){
+    const cooled = cooldownMap && cooldownMap.size ? new Set(cooldownMap.keys()) : null;
+    let pool = (WORDS[letter] || []).filter(w => !usedSet.has(w) && !(cooled && cooled.has(w)));
+    // fall back to ignoring the cooldown if it would leave us with nothing to suggest
+    if(pool.length < count){
+      pool = (WORDS[letter] || []).filter(w => !usedSet.has(w));
+    }
+    const shuffled = pool.slice().sort(()=>Math.random()-0.5);
+    return shuffled.slice(0, count);
+  }
+  function hasAnyWordFor(letter, usedSet){
+    return (WORDS[letter] || []).some(w => !usedSet.has(w));
+  }
+
+  // ================= TIMER SCHEDULE =================
+  function timeForCorrectCount(c){
+    if(c < 3) return 60;
+    if(c < 6) return 50;
+    if(c < 9) return 40;
+    return 30;
+  }
+
+  // ================= STATE =================
+  let state = null;
+  let isPremium = false;
+  let lookupCount = 0;
+  const FREE_ROUNDS = 3;
+  const FREE_LOOKUPS = 3;
+  const MAX_TIMEOUT_REVEALS = 2; // after this many "(word)" reveals in one game, a timeout ends the game
+  let soundOn = true;
+
+  // Once you deploy the Cloudflare Worker (see worker.js), paste its URL here,
+  // e.g. "https://word-chain-translate.yourname.workers.dev". Leave it as ''
+  // to keep using the free MyMemory API — the game works either way.
+  const DEEPL_PROXY_URL = '';
+
+  const els = {
+    correctVal: document.getElementById('correctVal'), roundVal: document.getElementById('roundVal'),
+    timerVal: document.getElementById('timerVal'), timerBox: document.getElementById('timerBox'),
+    ruleText: document.getElementById('ruleText'), chain: document.getElementById('chain'),
+    wordInput: document.getElementById('wordInput'), answerBtn: document.getElementById('answerBtn'),
+    micBtn: document.getElementById('micBtn'), lookupBtn: document.getElementById('lookupBtn'),
+    lookupCountLabel: document.getElementById('lookupCountLabel'), handsFreeBtn: document.getElementById('handsFreeBtn'),
+    dictInput: document.getElementById('dictInput'),
+    feedback: document.getElementById('feedback'), suggestArea: document.getElementById('suggestArea'),
+    startOverlay: document.getElementById('startOverlay'), overOverlay: document.getElementById('overOverlay'),
+    overCorrect: document.getElementById('overCorrect'), overRounds: document.getElementById('overRounds'),
+    upgradeOverlay: document.getElementById('upgradeOverlay'), upgradeBody: document.getElementById('upgradeBody'),
+    dictOverlay: document.getElementById('dictOverlay'), dictContent: document.getElementById('dictContent'),
+    tierLabel: document.getElementById('tierLabel'), tierBtn: document.getElementById('tierBtn'),
+    soundBtn: document.getElementById('soundBtn'),
+  };
+
+  let timerHandle = null;
+
+  // ================= SOUND ENGINE =================
+  let audioCtx = null;
+  function ensureAudio(){ if(!audioCtx){ const AC = window.AudioContext || window.webkitAudioContext; if(AC) audioCtx = new AC(); } return audioCtx; }
+  function beep(freq, duration, type, gainPeak){
+    if(!soundOn) return;
+    const ctx = ensureAudio(); if(!ctx) return;
+    const osc = ctx.createOscillator(); const gain = ctx.createGain();
+    osc.type = type || 'sine'; osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(gainPeak ?? 0.15, ctx.currentTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime + duration);
+  }
+  function sndTick(){ beep(880, 0.06, 'square', 0.05); }
+  function sndTickUrgent(){ beep(1180, 0.09, 'square', 0.10); }
+  function sndCorrect(){
+    if(!soundOn) return;
+    beep(660,0.12,'triangle',0.14); setTimeout(()=>beep(880,0.16,'triangle',0.14),90); setTimeout(()=>beep(1100,0.2,'triangle',0.14),180);
+  }
+  function sndWrong(){ beep(200, 0.22, 'sawtooth', 0.13); }
+  function sndTimeUp(){
+    if(!soundOn) return;
+    beep(220,0.28,'sawtooth',0.13); setTimeout(()=>beep(160,0.35,'sawtooth',0.12),140);
+  }
+  els.soundBtn.addEventListener('click', ()=>{
+    soundOn = !soundOn; els.soundBtn.textContent = soundOn ? '🔊' : '🔇'; if(soundOn) ensureAudio();
+  });
+
+  // ================= TIER / UPGRADE =================
+  function refreshTierUI(){
+    if(isPremium){ els.tierLabel.textContent = 'プレミアム'; els.tierBtn.firstChild.textContent = '🌟 '; els.tierBtn.classList.add('active'); }
+    else { els.tierLabel.textContent = '無料版'; els.tierBtn.firstChild.textContent = '🆓 '; els.tierBtn.classList.remove('active'); }
+    els.lookupCountLabel.textContent = isPremium ? '(無制限)' : `(残り${Math.max(0, FREE_LOOKUPS-lookupCount)}回)`;
+  }
+  function showUpgrade(reasonText){
+    els.upgradeBody.textContent = reasonText;
+    els.upgradeOverlay.style.display = 'flex';
+  }
+  document.getElementById('closeUpgradeBtn').addEventListener('click', ()=>{ els.upgradeOverlay.style.display = 'none'; });
+  document.getElementById('fakeBuyBtn').addEventListener('click', ()=>{
+    // DEMO ONLY: no real payment is processed. In production this would call
+    // a real payment API (e.g. Apple/Google In-App Purchase or Stripe Checkout).
+    isPremium = true;
+    refreshTierUI();
+    els.upgradeOverlay.style.display = 'none';
+    setFeedback('🌟 プレミアムにアップグレードしました(実際の課金はありません)', true);
+    if(state && !state.alive === false){}
+  });
+  els.tierBtn.addEventListener('click', ()=>{
+    if(isPremium) return;
+    showUpgrade('プレミアムにアップグレードすると、ラウンド数・辞書検索回数がすべて無制限になります。');
+  });
+
+  // ================= GAME CORE =================
+  function startGame(){
+    state = {
+      correctCount:0, roundCount:0, usedWords:new Set(), chainDisplay:[],
+      requiredLetter:null, timeLeft:0, alive:true, awaitingReveal:false,
+      suggestionCooldown:new Map(), // word -> rounds remaining before it can be suggested again
+      timeoutRevealCount:0, // how many times the "(word)" answer reveal has been used this game (max 2)
+      consecutiveMisses:0 // timeouts in a row without a correct answer; reveal only triggers at 2
+    };
+    els.startOverlay.style.display = 'none';
+    els.overOverlay.style.display = 'none';
+    els.wordInput.disabled = false;
+    els.answerBtn.disabled = false;
+    els.micBtn.disabled = !recognitionSupported;
+    els.lookupBtn.disabled = false;
+    els.dictInput.disabled = false;
+    els.handsFreeBtn.disabled = !recognitionSupported;
+    els.chain.innerHTML = '<div class="empty">最初の単語は自由。何か英単語を入力しよう。</div>';
+    els.suggestArea.innerHTML = '';
+    updateHUD();
+    nextTurn();
+    els.wordInput.focus();
+  }
+
+  function updateHUD(){
+    els.correctVal.textContent = state.correctCount;
+    els.roundVal.textContent = state.roundCount;
+  }
+
+  function nextTurn(){
+    // free-tier round gate
+    if(!isPremium && state.roundCount >= FREE_ROUNDS){
+      pauseForUpgrade();
+      return;
+    }
+    // if the required starting letter has no words left, treat as a natural "chain complete" and reset
+    if(state.requiredLetter && !hasAnyWordFor(state.requiredLetter, state.usedWords)){
+      setFeedback(`「${state.requiredLetter.toUpperCase()}」で始まる単語がなくなりました。新しいチェーンを始めましょう！`, true);
+      state.requiredLetter = null;
+    }
+    els.ruleText.innerHTML = state.requiredLetter
+      ? `<b>${state.requiredLetter.toUpperCase()}</b> から始まる単語`
+      : `どの単語からでもOK`;
+    state.timeLeft = timeForCorrectCount(state.correctCount);
+    updateTimerDisplay();
+    els.suggestArea.innerHTML = '';
+    state.awaitingReveal = false;
+    if(timerHandle) clearInterval(timerHandle);
+    timerHandle = setInterval(tick, 1000);
+  }
+
+  function pauseForUpgrade(){
+    if(timerHandle) clearInterval(timerHandle);
+    els.wordInput.disabled = true;
+    els.answerBtn.disabled = true;
+    els.micBtn.disabled = true;
+    showUpgrade(`無料版は${FREE_ROUNDS}ラウンドまでです。プレミアムにアップグレードすると続きから無制限に遊べます。`);
+  }
+
+  function endGame(reasonMsg){
+    state.alive = false;
+    if(timerHandle) clearInterval(timerHandle);
+    els.wordInput.disabled = true;
+    els.answerBtn.disabled = true;
+    els.micBtn.disabled = true;
+    stopListening();
+    sndTimeUp();
+    if(reasonMsg) setFeedback(reasonMsg, false);
+    els.overCorrect.textContent = state.correctCount;
+    els.overRounds.textContent = state.roundCount;
+    els.overOverlay.style.display = 'flex';
+  }
+
+  function tick(){
+    state.timeLeft -= 1;
+    updateTimerDisplay();
+    if(state.timeLeft > 0){ if(state.timeLeft <= 5) sndTickUrgent(); else sndTick(); }
+    if(state.timeLeft <= 0){
+      clearInterval(timerHandle);
+      handleTimeout();
+    }
+  }
+  function updateTimerDisplay(){
+    els.timerVal.textContent = Math.max(0, Math.ceil(state.timeLeft));
+    els.timerBox.classList.toggle('warn', state.timeLeft <= 5);
+  }
+  function setFeedback(msg, ok){ els.feedback.textContent = msg; els.feedback.classList.toggle('ok', !!ok); }
+
+  function addChip(word){
+    const empty = els.chain.querySelector('.empty');
+    if(empty) empty.remove();
+    if(state.chainDisplay.length > 0){
+      const arrow = document.createElement('span'); arrow.className = 'arrow'; arrow.textContent = '→';
+      els.chain.appendChild(arrow);
+    }
+    state.chainDisplay.push(word);
+    const chip = document.createElement('span'); chip.className = 'chip'; chip.textContent = word;
+    els.chain.appendChild(chip);
+    els.chain.parentElement.scrollTop = els.chain.parentElement.scrollHeight;
+  }
+
+  function decayCooldown(map){
+    for(const [w, rounds] of map){
+      const next = rounds - 1;
+      if(next <= 0) map.delete(w); else map.set(w, next);
+    }
+  }
+  function registerCooldown(map, words, rounds){
+    words.forEach(w => map.set(w, rounds));
+  }
+
+  // Renders the 5 suggestion words as a vertical list, each with its own meaning
+  // fetched (in parallel) from the dictionary API and filled in as it arrives.
+  function renderSuggestionBox(suggestions, labelText){
+    const rowsHtml = suggestions.map((w, i) => `
+      <div class="wordRow">
+        <span class="w">${w}</span>
+        <span class="m" id="sugMeaning${i}">意味を調べています…</span>
+      </div>`).join('');
+    els.suggestArea.innerHTML = `
+      <div class="suggestBox">
+        <div class="lbl">${labelText}</div>
+        <div class="wordList">${rowsHtml}</div>
+      </div>`;
+    suggestions.forEach((w, i) => {
+      fetchCombinedMeaning(w).then(meaning=>{
+        const el = document.getElementById(`sugMeaning${i}`);
+        if(!el) return; // box may already be gone
+        el.innerHTML = meaning
+          ? meaning.split('\n').map(line => escapeHtml(line)).join('<br>')
+          : '意味は見つかりませんでした(通信エラーの可能性があります)';
+      });
+    });
+  }
+  function escapeHtml(str){
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function handleTimeout(){
+    sndTimeUp();
+    state.consecutiveMisses += 1;
+
+    // first miss in a row: just mark it wrong and try again — no reveal yet
+    if(state.consecutiveMisses < 2){
+      state.roundCount += 1;
+      updateHUD();
+      setFeedback('⏰ 時間切れ・不正解！もう一度挑戦してください(あと1回失敗すると正解例が出ます)', false);
+      setTimeout(()=>{ if(state.alive) nextTurn(); }, 1600);
+      return;
+    }
+
+    // second consecutive miss: reveal 5 example answers
+    decayCooldown(state.suggestionCooldown);
+    const letter = state.requiredLetter;
+    let suggestions;
+    if(letter){
+      suggestions = suggestionsFor(letter, state.usedWords, 5, state.suggestionCooldown);
+    } else {
+      // first turn timeout: just show 5 generally common starter words
+      const anyLetters = Object.keys(WORDS);
+      const pickLetter = anyLetters[Math.floor(Math.random()*anyLetters.length)];
+      suggestions = suggestionsFor(pickLetter, state.usedWords, 5, state.suggestionCooldown);
+    }
+
+    // once the "(word)" chain-continuing reveal has already been used MAX_TIMEOUT_REVEALS
+    // times this game, the next reveal still SHOWS the 5 example answers (for learning),
+    // but the game ends right after instead of continuing the chain.
+    const isFinalReveal = state.timeoutRevealCount >= MAX_TIMEOUT_REVEALS;
+
+    if(suggestions.length === 0){
+      setFeedback('時間切れ。この文字で続く単語が見つかりませんでした。', false);
+      if(isFinalReveal){
+        state.roundCount += 1; updateHUD();
+        endGame('⏰ 時間切れ・不正解。お疲れさまでした！');
+      } else {
+        state.requiredLetter = null;
+        state.roundCount += 1;
+        state.consecutiveMisses = 0;
+        updateHUD();
+        setTimeout(nextTurn, 1500);
+      }
+      return;
+    }
+
+    registerCooldown(state.suggestionCooldown, suggestions, 4); // excluded for the next 3 timeout events
+    const chosen = suggestions[0];
+    state.roundCount += 1;
+
+    if(isFinalReveal){
+      // final timeout: show the 5 examples as the answer to the unsolved question, then end
+      setFeedback('⏰ 時間切れ・不正解。正解例はこちら:', false);
+      updateHUD();
+      renderSuggestionBox(suggestions, '💡 正解例(5つ)');
+      setTimeout(()=>{ endGame(); }, 6000);
+      return;
+    }
+
+    // reveal + auto-continue the chain so play goes on; reset the miss streak
+    state.timeoutRevealCount += 1;
+    state.consecutiveMisses = 0;
+    const revealsLeft = MAX_TIMEOUT_REVEALS - state.timeoutRevealCount;
+    setFeedback(`⏰ 2回連続で時間切れ！正解例はこちら:(あと${revealsLeft}回でゲーム終了になります)`, false);
+    state.usedWords.add(chosen);
+    addChip(`(${chosen})`);
+    state.requiredLetter = lastLetter(chosen);
+    updateHUD();
+    renderSuggestionBox(suggestions, '💡 正解例(5つ)');
+    setTimeout(()=>{ if(state.alive) nextTurn(); }, 6000);
+  }
+
+  function submitWord(){
+    if(!state || !state.alive) return;
+    const raw = els.wordInput.value.trim();
+    if(!raw) return;
+    if(!isEnglishOnly(raw)){ setFeedback('英字のみで入力してください (A-Z)', false); return; }
+    const norm = raw.toLowerCase();
+
+    if(state.usedWords.has(norm)){ setFeedback('その単語はもう使いました。別の単語をどうぞ', false); sndWrong(); return; }
+    if(state.requiredLetter && firstLetter(norm) !== state.requiredLetter){
+      setFeedback(`「${state.requiredLetter.toUpperCase()}」から始まる単語を入力してください`, false); sndWrong(); return;
+    }
+    if(!ALL_WORDS.has(norm)){
+      setFeedback(`不正解: 収録辞書に見つかりませんでした。スペルを確認するか📖で調べてみましょう`, false); sndWrong(); return;
+    }
+
+    // correct!
+    clearInterval(timerHandle);
+    state.usedWords.add(norm);
+    addChip(raw);
+    state.requiredLetter = lastLetter(norm);
+    state.correctCount += 1;
+    state.roundCount += 1;
+    state.consecutiveMisses = 0;
+    updateHUD();
+    sndCorrect();
+    setFeedback('✅ 正解！つながりました', true);
+    els.wordInput.value = '';
+    els.suggestArea.innerHTML = '';
+    nextTurn();
+  }
+
+  els.answerBtn.addEventListener('click', submitWord);
+  els.wordInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') submitWord(); });
+  els.wordInput.addEventListener('input', ()=> setFeedback('', false));
+
+  document.getElementById('startBtn').addEventListener('click', startGame);
+  document.getElementById('retryBtn').addEventListener('click', ()=>{
+    els.overOverlay.style.display = 'none';
+    els.startOverlay.style.display = 'flex';
+  });
+
+  // (end-of-session summary triggered manually via a "give up" style flow is not exposed;
+  // kept simple — game continues until the player closes the tab. Rounds gate covers monetization.)
+
+  // ================= DICTIONARY LOOKUP =================
+  // English definitions: dictionaryapi.dev (free, no key). Japanese meaning: MyMemory
+  // translation API (free, no key, CORS-enabled) — used as a lightweight 英和辞典 stand-in.
+  // Both requests use a timeout so a slow/unresponsive API can't leave the UI stuck on
+  // "調べています…" forever, and the two sources are fetched in parallel and combined.
+
+  function fetchWithTimeout(url, ms){
+    const controller = new AbortController();
+    const timer = setTimeout(()=>controller.abort(), ms);
+    return fetch(url, { signal: controller.signal }).finally(()=>clearTimeout(timer));
+  }
+
+  async function fetchEnglishDefinition(word){
+    try{
+      const res = await fetchWithTimeout(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`, 6000);
+      if(!res.ok) throw new Error('not found');
+      const data = await res.json();
+      const entry = data[0];
+      const meaning = (entry.meanings || [])[0];
+      const def = meaning && meaning.definitions && meaning.definitions[0];
+      if(!def) return null;
+      const pos = meaning.partOfSpeech ? `(${meaning.partOfSpeech}) ` : '';
+      return { pos: meaning.partOfSpeech || '', text: `${pos}${def.definition}`, example: def.example || null };
+    }catch(err){
+      return null;
+    }
+  }
+
+  async function fetchJapaneseMeaningViaDeepL(word){
+    if(!DEEPL_PROXY_URL) return null;
+    try{
+      const res = await fetchWithTimeout(`${DEEPL_PROXY_URL}?word=${encodeURIComponent(word)}`, 6000);
+      if(!res.ok) throw new Error('proxy failed');
+      const data = await res.json();
+      return data && data.translated ? data.translated : null;
+    }catch(err){
+      return null; // falls through to MyMemory below
+    }
+  }
+
+  async function fetchJapaneseMeaningViaMyMemory(word){
+    try{
+      const res = await fetchWithTimeout(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(word)}&langpair=en|ja`, 6000);
+      if(!res.ok) throw new Error('translate failed');
+      const data = await res.json();
+      const text = data && data.responseData && data.responseData.translatedText;
+      if(!text) return null;
+      if(/MYMEMORY WARNING|NO QUERY SPECIFIED/i.test(text)) return null;
+      return text;
+    }catch(err){
+      return null;
+    }
+  }
+
+  // Tries the higher-quality DeepL proxy first (if configured via DEEPL_PROXY_URL),
+  // and falls back to the free MyMemory API so the game keeps working either way.
+  async function fetchJapaneseMeaning(word){
+    const viaDeepL = await fetchJapaneseMeaningViaDeepL(word);
+    if(viaDeepL) return viaDeepL;
+    return fetchJapaneseMeaningViaMyMemory(word);
+  }
+
+  // Combined lookup used for the inline suggestion list — returns a single display string
+  // that leads with the Japanese meaning (most useful at a glance) and adds the English
+  // definition underneath when available.
+  async function fetchCombinedMeaning(word){
+    const [ja, en] = await Promise.all([fetchJapaneseMeaning(word), fetchEnglishDefinition(word)]);
+    if(!ja && !en) return null;
+    let out = '';
+    if(ja) out += `🇯🇵 ${ja}`;
+    if(en){ out += (out ? '\n' : '') + `🇬🇧 ${en.text}`; }
+    return out;
+  }
+
+  async function lookupWord(word){
+    els.dictContent.innerHTML = '<p style="text-align:center;">読み込み中…</p>';
+    els.dictOverlay.style.display = 'flex';
+    const [ja, en] = await Promise.all([fetchJapaneseMeaning(word), fetchEnglishDefinitionFull(word)]);
+    if(!ja && !en){
+      els.dictContent.innerHTML = `<p style="text-align:center;">「${word}」の意味が見つかりませんでした。<br>スペルを確認するか、通信状況をご確認ください。</p>`;
+      return;
+    }
+    let html = `<div class="dictWord">${word}</div>`;
+    if(ja){ html += `<div class="dictDef" style="font-size:16px; font-weight:700; text-align:center;">🇯🇵 ${ja}</div>`; }
+    if(en){
+      if(en.phonetic){ html += `<div class="dictPos">${en.phonetic}</div>`; }
+      en.meanings.forEach(m=>{
+        html += `<div class="dictPos">${m.partOfSpeech}</div>`;
+        m.definitions.forEach((d,i)=>{
+          html += `<div class="dictDef"><span class="num">${i+1}.</span>${d.definition}`;
+          if(d.example){ html += `<div class="dictEx">例: ${d.example}</div>`; }
+          html += `</div>`;
+        });
+      });
+    } else {
+      html += `<div class="installNote">英語の詳細な定義は取得できませんでした(日本語訳のみ表示しています)</div>`;
+    }
+    els.dictContent.innerHTML = html;
+  }
+
+  async function fetchEnglishDefinitionFull(word){
+    try{
+      const res = await fetchWithTimeout(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`, 6000);
+      if(!res.ok) throw new Error('not found');
+      const data = await res.json();
+      const entry = data[0];
+      return {
+        phonetic: entry.phonetic || null,
+        meanings: (entry.meanings || []).slice(0,3).map(m=>({
+          partOfSpeech: m.partOfSpeech,
+          definitions: (m.definitions || []).slice(0,2).map(d=>({ definition: d.definition, example: d.example || null }))
+        }))
+      };
+    }catch(err){
+      return null;
+    }
+  }
+
+  document.getElementById('closeDictBtn').addEventListener('click', ()=>{ els.dictOverlay.style.display = 'none'; });
+  els.lookupBtn.addEventListener('click', ()=>{
+    if(!isPremium && lookupCount >= FREE_LOOKUPS){
+      showUpgrade(`辞書検索は無料版だと${FREE_LOOKUPS}回までです。プレミアムにアップグレードすると無制限に使えます。`);
+      return;
+    }
+    const word = els.dictInput.value.trim().replace(/[()]/g,'');
+    if(!word){ setFeedback('調べたい単語を「調べたい単語を入力」欄に入力してから「調べる」を押してください', false); return; }
+    if(!isEnglishOnly(word)){ setFeedback('辞書検索は英字のみ対応しています', false); return; }
+    if(!isPremium) lookupCount += 1;
+    refreshTierUI();
+    lookupWord(word);
+  });
+  els.dictInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') els.lookupBtn.click(); });
+
+  // ================= VOICE INPUT (Web Speech API) =================
+  const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const apiExists = !!SpeechRecognitionCtor;
+  const isSecure = window.isSecureContext; // https:// or localhost — required by most browsers for mic access
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+  const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+  const recognitionSupported = apiExists && isSecure;
+
+  let recognizer = null;
+  let listening = false;
+  let handsFreeActive = false;
+
+  function showMicNotice(msg){
+    const el = document.getElementById('micNotice');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  if(!apiExists){
+    els.micBtn.style.display = 'none';
+    els.handsFreeBtn.style.display = 'none';
+    if(isIOS || isSafari){
+      showMicNotice('⚠️ iPhoneのSafari(およびiOS上の全ブラウザ)は音声認識APIに対応していません。かわりに、入力欄をタップしてキーボードに表示されるマイクのアイコンで音声入力できます。');
+    } else {
+      showMicNotice('⚠️ このブラウザは音声入力に対応していません。Android版Chromeなどをお試しください。');
+    }
+  } else if(!isSecure){
+    els.micBtn.disabled = true;
+    els.handsFreeBtn.disabled = true;
+    showMicNotice('⚠️ 音声入力はHTTPS環境でのみ利用できます。今はファイルを直接開いている状態(file://)のため使用できません。GitHub Pagesなどでこのページを公開してから開いてください。');
+  } else {
+    recognizer = new SpeechRecognitionCtor();
+    recognizer.lang = 'en-US';
+    recognizer.interimResults = false;
+    recognizer.maxAlternatives = 1;
+    recognizer.onresult = (e) => {
+      const transcript = e.results[e.results.length-1][0].transcript.replace(/[.,!?\s]/g, '');
+      if(!transcript) return;
+      els.wordInput.value = transcript;
+      if(handsFreeActive && state && state.alive){
+        setFeedback('🎤 聞き取りました。判定します…', true);
+        setTimeout(()=>{ if(state && state.alive) submitWord(); }, 250);
+      } else {
+        setFeedback('🎤 聞き取りました。「回答」で判定してください', true);
+      }
+    };
+    recognizer.onerror = (e) => {
+      listening = false;
+      els.micBtn.classList.remove('listening');
+      let msg = '聞き取れませんでした。もう一度試すか、手入力してください';
+      switch(e.error){
+        case 'not-allowed':
+        case 'service-not-allowed':
+          msg = '🎤 マイクの使用が許可されていません。ブラウザの設定でこのサイトのマイクを許可してください';
+          handsFreeActive = false;
+          break;
+        case 'no-speech':
+          msg = '声が聞こえませんでした。もう一度話してみてください';
+          break;
+        case 'audio-capture':
+          msg = '🎤 マイクが見つかりません。デバイスのマイクをご確認ください';
+          handsFreeActive = false;
+          break;
+        case 'network':
+          msg = '通信エラーのため音声認識できませんでした。電波状況をご確認ください';
+          break;
+      }
+      if(!handsFreeActive || e.error === 'not-allowed' || e.error === 'audio-capture'){
+        setFeedback(msg, false);
+      }
+    };
+    recognizer.onend = () => {
+      listening = false;
+      els.micBtn.classList.remove('listening');
+      if(handsFreeActive && state && state.alive){
+        try{ recognizer.start(); listening = true; els.micBtn.classList.add('listening'); }catch(e){}
+      }
+    };
+  }
+
+  function stopListening(){
+    handsFreeActive = false;
+    if(recognizer && listening){ try{ recognizer.stop(); }catch(e){} }
+    listening = false;
+    els.micBtn.classList.remove('listening');
+    els.handsFreeBtn.textContent = '🎙️ 常時音声: OFF';
+  }
+
+  // Explicitly request mic permission first so we can surface a clear error
+  // instead of the recognizer silently failing to start.
+  async function requestMicPermission(){
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return true; // can't pre-check; let recognizer try
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(t => t.stop());
+      return true;
+    }catch(err){
+      setFeedback('🎤 マイクへのアクセスが許可されませんでした。ブラウザの設定を確認してください', false);
+      return false;
+    }
+  }
+
+  els.micBtn.addEventListener('click', async ()=>{
+    if(!recognitionSupported || !state || !state.alive || handsFreeActive) return;
+    if(listening){ stopListening(); return; }
+    ensureAudio();
+    const ok = await requestMicPermission();
+    if(!ok) return;
+    try{ recognizer.start(); listening = true; els.micBtn.classList.add('listening'); setFeedback('🎤 Listening…', true); }
+    catch(e){ setFeedback('マイクを開始できませんでした。ページを再読み込みしてもう一度お試しください', false); }
+  });
+  els.handsFreeBtn.addEventListener('click', async ()=>{
+    if(!recognitionSupported) return;
+    if(handsFreeActive){ stopListening(); return; }
+    ensureAudio();
+    const ok = await requestMicPermission();
+    if(!ok) return;
+    handsFreeActive = true;
+    els.handsFreeBtn.textContent = '🎙️ 常時音声: ON';
+    try{ recognizer.start(); listening = true; els.micBtn.classList.add('listening'); setFeedback('🎤 常時音声入力オン。話すと自動判定されます', true); }
+    catch(e){ handsFreeActive = false; els.handsFreeBtn.textContent = '🎙️ 常時音声: OFF'; }
+  });
+
+  // ================= INIT =================
+  refreshTierUI();
+})();
+</script>
+
+</body>
+</html>

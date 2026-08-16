@@ -1,0 +1,7 @@
+name = "word-chain-translate"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# DEEPL_KEY is NOT set here — it must be stored as a secret so it never
+# appears in source control or the deployed bundle:
+#   wrangler secret put DEEPL_KEY
