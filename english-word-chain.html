@@ -221,16 +221,16 @@
 
 <div class="overlay" id="startOverlay">
   <div class="card">
-    <h2>英単語しりとり 学習版</h2>
+    <h2>英単語しりとり 学習版(テスト版)</h2>
     <p>
-    英語のWord Chain(しりとり)で語彙力を鍛えるゲームです。<br><br>
+    英語のWord Chain(しりとり)で語彙力を鍛えるゲームです。<br>
+    現在、一部の方にお試しいただいているテスト版です。<br><br>
     ・制限時間は60秒からスタート。3問正解ごとに時間が短くなり、9問正解すると30秒固定になります。<br>
     ・「回答」ボタンでいつでも正誤判定。<br>
     ・1ゲームで時間切れが合計2回になった場合は、正解例を5つ表示してゲーム終了になります(間に正解を挟んでも回数はリセットされません)。<br>
     ・わからない単語は📖で意味・使い方を調べられます。<br>
     ・🎤で音声入力もできます。<br><br>
-    <b>🆓 無料版:</b> 10ラウンド・辞書検索3回まで無料<br>
-    <b>🌟 プレミアム:</b> ラウンド数・辞書検索とも無制限
+    <b>このテスト版では10問まで挑戦できます。</b>ぜひ最後まで遊んでみて、感想を聞かせてください！
     </p>
     <button class="primary" id="startBtn">はじめる</button>
   </div>
@@ -340,7 +340,7 @@
   // This is a lightweight deterrent against casual abuse, not a strong secret —
   // anyone can still view it in this file's source. Leave '' if you haven't set
   // an APP_KEY secret on the Worker yet.
-  const APP_SHARED_KEY = '';
+  const APP_SHARED_KEY = '2a9208af6c7c45b36a775ab8d2be09e27c4a7e2d447d5297';
 
   const els = {
     correctVal: document.getElementById('correctVal'), roundVal: document.getElementById('roundVal'),
