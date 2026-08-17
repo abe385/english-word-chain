@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-<title>英単語しりとり - 学習版</title>
+<title>英語で遊ぼう！</title>
 <meta name="theme-color" content="#12141c">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="英単語しりとり">
+<meta name="apple-mobile-web-app-title" content="英語で遊ぼう！">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon.svg">
@@ -196,7 +196,7 @@
       <button class="iconBtn" id="feedbackBtn">📝 フィードバック</button>
     </div>
     <div class="eyebrow">ENGLISH WORD CHAIN</div>
-    <h1>英単語しりとり 学習版</h1>
+    <h1>英語で遊ぼう！</h1>
     <div class="sub">一人で挑戦。答えたら即判定、わからない単語は意味も調べられます。</div>
   </div>
 
@@ -243,7 +243,7 @@
 
 <div class="overlay" id="startOverlay">
   <div class="card">
-    <h2>英単語しりとり 学習版(テスト版)</h2>
+    <h2>英語で遊ぼう！(テスト版)</h2>
     <p>
     英語のWord Chain(しりとり)で語彙力を鍛えるゲームです。<br>
     現在、一部の方にお試しいただいているテスト版です。<br><br>
@@ -720,7 +720,7 @@
   });
   document.getElementById('sendFeedbackBtn').addEventListener('click', ()=>{
     const body = document.getElementById('feedbackText').value.trim();
-    const subject = encodeURIComponent('英単語しりとり テスト版フィードバック');
+    const subject = encodeURIComponent('英語で遊ぼう！ テスト版フィードバック');
     const encodedBody = encodeURIComponent(body || '(コメントなし)');
     window.location.href = `mailto:${FEEDBACK_EMAIL}?subject=${subject}&body=${encodedBody}`;
   });
@@ -824,7 +824,12 @@
         const def = await fetchEnglishDefinition(candidate);
         if(!def) continue;
         target = candidate;
-        hint = await fetchJapaneseMeaning(candidate);
+        // DeepL only here (not the MyMemory fallback) — MyMemory's crowd-sourced
+        // translation memory occasionally returns a mismatched/unrelated word for
+        // less common terms, which would show a flat-out WRONG hint. A missing
+        // hint (falls through to the structural length/letter hint below) is far
+        // less harmful than showing an incorrect meaning.
+        hint = await fetchJapaneseMeaningViaDeepL(candidate);
       }
       if(!target){ target = ALL_WORDS_ARR[Math.floor(Math.random()*ALL_WORDS_ARR.length)]; }
       state.reverseTarget = target;
