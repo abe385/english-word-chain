@@ -261,7 +261,7 @@
         <button class="modeBtn" data-mode="hard1" id="modeHard1Btn">ハード①<br>(6文字以上)</button>
         <button class="modeBtn" data-mode="hard2" id="modeHard2Btn">ハード②<br>(始終が同じ文字)</button>
         <button class="modeBtn" data-mode="reverse" id="modeReverseBtn">🔄逆<br>(和→英クイズ)</button>
-        <button class="modeBtn" data-mode="phrase" id="modePhraseBtn">📝定型文<br>(空欄補充)</button>
+        <button class="modeBtn" data-mode="phrase" id="modePhraseBtn">📝空欄補充<br>(よく使う表現)</button>
       </div>
       <div class="modeNote" id="modeNote">すべての単語が使えます。</div>
     </div>
@@ -346,23 +346,9 @@
   // ================= FIXED PHRASES (fill-in-the-blank mode) =================
   const PHRASES = [
     {phrase:"How ___ you?", answer:"are", meaning:"元気ですか?"},
-    {phrase:"Nice to ___ you.", answer:"meet", meaning:"はじめまして"},
-    {phrase:"What ___ is it?", answer:"time", meaning:"今何時ですか"},
-    {phrase:"I ___ a doctor.", answer:"am", meaning:"私は医者です"},
-    {phrase:"She ___ to school every day.", answer:"goes", meaning:"彼女は毎日学校に行く"},
-    {phrase:"Can you help ___?", answer:"me", meaning:"手伝ってもらえますか"},
     {phrase:"Where ___ you from?", answer:"are", meaning:"出身はどこですか"},
-    {phrase:"I ___ like coffee.", answer:"would", meaning:"コーヒーが欲しいです"},
-    {phrase:"Thank you ___ much.", answer:"very", meaning:"どうもありがとう"},
-    {phrase:"See you ___.", answer:"later", meaning:"またね"},
-    {phrase:"I'm sorry ___ that.", answer:"about", meaning:"それについてごめんなさい"},
-    {phrase:"Do you ___ English?", answer:"speak", meaning:"英語を話しますか"},
     {phrase:"It's nice ___ meet you.", answer:"to", meaning:"あなたに会えて嬉しいです"},
-    {phrase:"I have ___ idea.", answer:"no", meaning:"全くわかりません"},
-    {phrase:"What's your ___?", answer:"name", meaning:"お名前は?"},
     {phrase:"How much ___ this cost?", answer:"does", meaning:"これはいくらですか"},
-    {phrase:"I need ___ help.", answer:"some", meaning:"少し助けが必要です"},
-    {phrase:"Let's ___ a break.", answer:"take", meaning:"休憩しましょう"},
     {phrase:"He is good ___ soccer.", answer:"at", meaning:"彼はサッカーが上手だ"},
     {phrase:"I look forward ___ seeing you.", answer:"to", meaning:"会えるのを楽しみにしています"},
     {phrase:"What do you ___ for a living?", answer:"do", meaning:"お仕事は何ですか"},
@@ -372,7 +358,6 @@
     {phrase:"We arrived ___ the airport.", answer:"at", meaning:"空港に着いた"},
     {phrase:"He apologized ___ being late.", answer:"for", meaning:"遅れたことを謝った"},
     {phrase:"I'm interested ___ music.", answer:"in", meaning:"音楽に興味がある"},
-    {phrase:"Turn ___ the light.", answer:"off", meaning:"明かりを消して"},
     {phrase:"Wake ___ early tomorrow.", answer:"up", meaning:"明日早く起きて"},
     {phrase:"Put ___ your coat.", answer:"on", meaning:"コートを着て"},
     {phrase:"I ran ___ of time.", answer:"out", meaning:"時間切れになった"},
@@ -380,13 +365,8 @@
     {phrase:"I'm proud ___ you.", answer:"of", meaning:"あなたを誇りに思う"},
     {phrase:"He is famous ___ his paintings.", answer:"for", meaning:"彼は絵で有名だ"},
     {phrase:"Let me ___ you a question.", answer:"ask", meaning:"質問させてください"},
-    {phrase:"I couldn't ___ my homework.", answer:"finish", meaning:"宿題を終えられなかった"},
     {phrase:"We should ___ up early.", answer:"get", meaning:"早く起きるべきだ"},
-    {phrase:"Please ___ down.", answer:"sit", meaning:"座ってください"},
-    {phrase:"I'm not sure ___ that.", answer:"about", meaning:"それについて確信がない"},
     {phrase:"It depends ___ the weather.", answer:"on", meaning:"天気次第だ"},
-    {phrase:"Could you ___ me the salt?", answer:"pass", meaning:"塩を取ってもらえますか"},
-    {phrase:"I'm afraid I ___ go now.", answer:"must", meaning:"すみませんがもう行かなければなりません"},
     {phrase:"He ___ up in Tokyo.", answer:"grew", meaning:"彼は東京で育った"},
     {phrase:"They got ___ last year.", answer:"married", meaning:"彼らは去年結婚した"},
     {phrase:"I'll be ___ in a minute.", answer:"back", meaning:"すぐ戻ります"},
@@ -397,27 +377,17 @@
     {phrase:"We're out ___ milk.", answer:"of", meaning:"牛乳が切れている"},
     {phrase:"Excuse ___, where is the station?", answer:"me", meaning:"すみません、駅はどこですか"},
     {phrase:"I'd like ___ book a table.", answer:"to", meaning:"予約をしたいのですが"},
-    {phrase:"Could I ___ the menu, please?", answer:"see", meaning:"メニューを見せてもらえますか"},
     {phrase:"How ___ does it take?", answer:"long", meaning:"どのくらい時間がかかりますか"},
     {phrase:"I'll have the ___ as him.", answer:"same", meaning:"彼と同じものをください"},
-    {phrase:"Is this seat ___?", answer:"taken", meaning:"この席は空いていますか"},
     {phrase:"Could you say that ___?", answer:"again", meaning:"もう一度言ってもらえますか"},
     {phrase:"I don't understand ___ word.", answer:"a", meaning:"一言もわかりません"},
-    {phrase:"Please speak more ___.", answer:"slowly", meaning:"もっとゆっくり話してください"},
     {phrase:"What does this word ___?", answer:"mean", meaning:"この単語はどういう意味ですか"},
-    {phrase:"How do you ___ this?", answer:"spell", meaning:"これはどう綴りますか"},
-    {phrase:"I'm just ___ around.", answer:"looking", meaning:"見ているだけです"},
-    {phrase:"Do you ___ credit cards?", answer:"accept", meaning:"クレジットカードは使えますか"},
-    {phrase:"Where can I ___ a taxi?", answer:"catch", meaning:"タクシーはどこで拾えますか"},
     {phrase:"How ___ is it from here?", answer:"far", meaning:"ここからどれくらい遠いですか"},
-    {phrase:"Turn ___ at the corner.", answer:"left", meaning:"角を左に曲がって"},
     {phrase:"Go ___ until you see the bank.", answer:"straight", meaning:"銀行が見えるまで真っ直ぐ行って"},
-    {phrase:"It's ___ from here.", answer:"far", meaning:"ここからは遠いです"},
     {phrase:"Could you ___ me a favor?", answer:"do", meaning:"お願いを聞いてもらえますか"},
     {phrase:"I'm ___ my way.", answer:"on", meaning:"向かっている途中です"},
     {phrase:"I'll ___ you up at seven.", answer:"pick", meaning:"7時に迎えに行きます"},
     {phrase:"Let's meet ___ front of the station.", answer:"in", meaning:"駅の前で会いましょう"},
-    {phrase:"I'm running ___.", answer:"late", meaning:"遅れそうです"},
     {phrase:"Hold ___ a second.", answer:"on", meaning:"ちょっと待って"},
     {phrase:"Take ___ time.", answer:"your", meaning:"ゆっくりでいいですよ"},
     {phrase:"It's ___ to me.", answer:"up", meaning:"私次第です"},
@@ -425,19 +395,14 @@
     {phrase:"I couldn't ___ more.", answer:"agree", meaning:"完全に同意します"},
     {phrase:"That's ___ the point.", answer:"beside", meaning:"それは論点がずれている"},
     {phrase:"I'm all ___ for it.", answer:"in", meaning:"大賛成です"},
-    {phrase:"Let's give it a ___.", answer:"try", meaning:"試してみましょう"},
     {phrase:"I'm ___ two minds.", answer:"of", meaning:"迷っています"},
     {phrase:"He changed his ___.", answer:"mind", meaning:"彼は考えを変えた"},
-    {phrase:"I have a ___ feeling.", answer:"bad", meaning:"嫌な予感がする"},
     {phrase:"Keep ___ the good work.", answer:"up", meaning:"その調子で頑張って"},
     {phrase:"I'll keep that ___ mind.", answer:"in", meaning:"それを心に留めておきます"},
     {phrase:"It slipped my ___.", answer:"mind", meaning:"うっかり忘れていました"},
     {phrase:"I'm dying ___ pizza.", answer:"for", meaning:"ピザが食べたくて仕方ない"},
     {phrase:"That sounds ___ a plan.", answer:"like", meaning:"それはいい計画に聞こえる"},
     {phrase:"I'm up ___ it.", answer:"for", meaning:"やる気があります"},
-    {phrase:"Count me ___.", answer:"in", meaning:"私も仲間に入れて"},
-    {phrase:"I'll pass ___ this time.", answer:"this", meaning:"今回は遠慮しておきます"},
-    {phrase:"It's ___ big deal.", answer:"no", meaning:"大したことじゃない"},
     {phrase:"Don't mention ___.", answer:"it", meaning:"どういたしまして(気にしないで)"},
     {phrase:"You're ___ luck.", answer:"in", meaning:"運がいいですね"},
     {phrase:"Better ___ than never.", answer:"late", meaning:"遅くてもやらないよりまし"},
@@ -445,46 +410,25 @@
     {phrase:"Actions speak louder than ___.", answer:"words", meaning:"行動は言葉より雄弁"},
     {phrase:"It's raining ___ and dogs.", answer:"cats", meaning:"土砂降りだ"},
     {phrase:"Break a ___!", answer:"leg", meaning:"頑張ってね(演劇の激励)"},
-    {phrase:"I'm feeling ___ weather today.", answer:"under", meaning:"今日は体調が悪い"},
     {phrase:"He hit the ___ running.", answer:"ground", meaning:"彼はすぐに全力で取り組んだ"},
     {phrase:"Let's call it a ___.", answer:"day", meaning:"今日はここまでにしましょう"},
     {phrase:"I'm on the ___ of my seat.", answer:"edge", meaning:"ハラハラしている"},
-    {phrase:"She's under a ___ of stress.", answer:"lot", meaning:"彼女は多くのストレスを抱えている"},
     {phrase:"It's not my ___ of tea.", answer:"cup", meaning:"それは私の好みじゃない"},
     {phrase:"Let sleeping dogs ___.", answer:"lie", meaning:"寝た子を起こすな"},
     {phrase:"I'm all ___.", answer:"ears", meaning:"ちゃんと聞いています"},
     {phrase:"He has a heart ___ gold.", answer:"of", meaning:"彼は心優しい人だ"},
     {phrase:"It costs an ___ and a leg.", answer:"arm", meaning:"とても高い"},
     {phrase:"Let's play it ___ ear.", answer:"by", meaning:"その場の流れで決めよう"},
-    {phrase:"I need to ___ some steam.", answer:"blow", meaning:"ストレスを発散する必要がある"},
-    {phrase:"He's a piece ___ cake at math.", answer:"of", meaning:"彼にとって数学は簡単だ"},
     {phrase:"I woke ___ early today.", answer:"up", meaning:"今日は早く起きた"},
     {phrase:"She brushed ___ her teeth.", answer:"her", meaning:"彼女は歯を磨いた"},
-    {phrase:"I took a ___ this morning.", answer:"shower", meaning:"今朝シャワーを浴びた"},
-    {phrase:"He got ___ at seven.", answer:"dressed", meaning:"彼は7時に服を着た"},
-    {phrase:"I usually have ___ for breakfast.", answer:"toast", meaning:"普段朝食にトーストを食べる"},
     {phrase:"She commutes ___ train.", answer:"by", meaning:"彼女は電車で通勤する"},
     {phrase:"I get ___ work at nine.", answer:"to", meaning:"9時に仕事に着く"},
     {phrase:"We had a meeting ___ noon.", answer:"at", meaning:"正午に会議があった"},
     {phrase:"I finished work ___ six.", answer:"at", meaning:"6時に仕事を終えた"},
-    {phrase:"I usually cook dinner ___ myself.", answer:"for", meaning:"普段は自分で夕食を作る"},
-    {phrase:"She does the dishes ___ dinner.", answer:"after", meaning:"彼女は夕食後に皿を洗う"},
-    {phrase:"I watch TV ___ I relax.", answer:"while", meaning:"リラックスしながらテレビを見る"},
-    {phrase:"I go to bed ___ eleven.", answer:"around", meaning:"11時ごろ寝る"},
     {phrase:"He fell ___ during the movie.", answer:"asleep", meaning:"彼は映画の途中で眠ってしまった"},
-    {phrase:"I overslept ___ this morning.", answer:"this", meaning:"今朝寝坊した"},
     {phrase:"I'm ___ of shape lately.", answer:"out", meaning:"最近運動不足だ"},
-    {phrase:"I need to ___ some exercise.", answer:"get", meaning:"運動が必要だ"},
     {phrase:"She goes jogging ___ the morning.", answer:"in", meaning:"彼女は朝ジョギングする"},
     {phrase:"He works ___ at the gym.", answer:"out", meaning:"彼はジムで運動する"},
-    {phrase:"I feel ___ better now.", answer:"much", meaning:"今はずっと調子がいい"},
-    {phrase:"I have a ___ache.", answer:"head", meaning:"頭が痛い"},
-    {phrase:"I caught a ___.", answer:"cold", meaning:"風邪をひいた"},
-    {phrase:"You should see a ___.", answer:"doctor", meaning:"医者に診てもらった方がいい"},
-    {phrase:"Take this medicine ___ meals.", answer:"after", meaning:"食後にこの薬を飲んでください"},
-    {phrase:"I need to make an ___.", answer:"appointment", meaning:"予約を取らないといけない"},
-    {phrase:"How are you ___ today?", answer:"feeling", meaning:"今日の気分はどうですか"},
-    {phrase:"I'm feeling ___ better.", answer:"a", meaning:"少し良くなった"},
     {phrase:"Get well ___!", answer:"soon", meaning:"早く良くなってね"},
     {phrase:"I hope you ___ better soon.", answer:"feel", meaning:"早く良くなるといいですね"},
     {phrase:"What's the weather ___ today?", answer:"like", meaning:"今日の天気はどうですか"},
@@ -492,9 +436,7 @@
     {phrase:"Don't forget ___ bring an umbrella.", answer:"to", meaning:"傘を持っていくのを忘れないで"},
     {phrase:"It's freezing ___ today.", answer:"cold", meaning:"今日はとても寒い"},
     {phrase:"The sun is ___ brightly.", answer:"shining", meaning:"太陽が明るく照っている"},
-    {phrase:"I love this ___ of weather.", answer:"kind", meaning:"この種類の天気が好きだ"},
     {phrase:"It's supposed ___ snow tonight.", answer:"to", meaning:"今夜は雪が降るらしい"},
-    {phrase:"How was your ___?", answer:"weekend", meaning:"週末はどうでしたか"},
     {phrase:"I spent the weekend ___ home.", answer:"at", meaning:"週末は家で過ごした"},
     {phrase:"What are your plans ___ tonight?", answer:"for", meaning:"今夜の予定は?"},
     {phrase:"I'm free ___ Saturday.", answer:"on", meaning:"土曜日は空いている"},
@@ -502,7 +444,6 @@
     {phrase:"I have plans ___ Friday night.", answer:"on", meaning:"金曜の夜は予定がある"},
     {phrase:"I'm busy ___ the moment.", answer:"at", meaning:"今忙しいです"},
     {phrase:"I'll get back ___ you soon.", answer:"to", meaning:"すぐに連絡します"},
-    {phrase:"Can we ___ the meeting?", answer:"reschedule", meaning:"会議の予定を変更できますか"},
     {phrase:"I'm running behind ___.", answer:"schedule", meaning:"予定より遅れている"},
     {phrase:"The deadline is ___ Friday.", answer:"on", meaning:"締め切りは金曜日です"},
     {phrase:"I need to submit this ___ tomorrow.", answer:"by", meaning:"明日までにこれを提出する必要がある"},
@@ -514,34 +455,21 @@
     {phrase:"I'm applying ___ a new job.", answer:"for", meaning:"新しい仕事に応募している"},
     {phrase:"She got promoted ___ manager.", answer:"to", meaning:"彼女はマネージャーに昇進した"},
     {phrase:"He was fired ___ his job.", answer:"from", meaning:"彼は仕事をクビになった"},
-    {phrase:"I need to renew my ___.", answer:"contract", meaning:"契約を更新する必要がある"},
-    {phrase:"We reached an ___.", answer:"agreement", meaning:"合意に達した"},
-    {phrase:"Let's negotiate the ___.", answer:"price", meaning:"価格を交渉しましょう"},
-    {phrase:"Can I ___ a discount?", answer:"get", meaning:"割引はしてもらえますか"},
     {phrase:"How much is this ___ total?", answer:"in", meaning:"合計でいくらですか"},
     {phrase:"I'll pay ___ cash.", answer:"in", meaning:"現金で払います"},
-    {phrase:"Can I pay ___ card?", answer:"by", meaning:"カードで払えますか"},
     {phrase:"Do you have this ___ a smaller size?", answer:"in", meaning:"これのもっと小さいサイズはありますか"},
     {phrase:"Can I try this ___?", answer:"on", meaning:"これを試着してもいいですか"},
-    {phrase:"It doesn't ___ me.", answer:"suit", meaning:"それは私に似合わない"},
-    {phrase:"This shirt is too ___.", answer:"tight", meaning:"このシャツはきつすぎる"},
     {phrase:"Can I ___ this for a refund?", answer:"return", meaning:"これを返金のために返品できますか"},
     {phrase:"Where is the fitting ___?", answer:"room", meaning:"試着室はどこですか"},
     {phrase:"I'm just browsing, ___ you.", answer:"thank", meaning:"見ているだけです、ありがとう"},
-    {phrase:"That's a good ___.", answer:"deal", meaning:"それはお得だ"},
-    {phrase:"It's on ___ this week.", answer:"sale", meaning:"今週セール中だ"},
     {phrase:"I bought it ___ half price.", answer:"at", meaning:"半額で買った"},
     {phrase:"This restaurant is famous ___ its ramen.", answer:"for", meaning:"このレストランはラーメンで有名だ"},
     {phrase:"Could we get a table ___ two?", answer:"for", meaning:"2人用の席をお願いできますか"},
     {phrase:"I'll have the ___ special.", answer:"today's", meaning:"本日のスペシャルをください"},
     {phrase:"Could we get the check, ___?", answer:"please", meaning:"お会計をお願いします"},
-    {phrase:"This dish is ___ spicy.", answer:"too", meaning:"この料理は辛すぎる"},
-    {phrase:"It smells ___.", answer:"delicious", meaning:"美味しそうな匂いがする"},
     {phrase:"I'm allergic ___ shellfish.", answer:"to", meaning:"甲殻類アレルギーです"},
     {phrase:"Could I get some water, ___?", answer:"please", meaning:"お水をいただけますか"},
-    {phrase:"I'm on a ___.", answer:"diet", meaning:"ダイエット中です"},
     {phrase:"I'm ___ vegetarian.", answer:"a", meaning:"私はベジタリアンです"},
-    {phrase:"Let's split the ___.", answer:"bill", meaning:"割り勘にしましょう"},
     {phrase:"It's my ___ this time.", answer:"treat", meaning:"今回は私のおごりです"},
     {phrase:"I'll get this ___.", answer:"one", meaning:"今回は私が払います"},
     {phrase:"How did your trip ___?", answer:"go", meaning:"旅行はどうでしたか"},
@@ -549,11 +477,6 @@
     {phrase:"We're flying ___ Paris tomorrow.", answer:"to", meaning:"明日パリに飛行機で行きます"},
     {phrase:"I need to check ___ my flight.", answer:"in", meaning:"搭乗手続きをしないといけない"},
     {phrase:"Where is the boarding ___?", answer:"gate", meaning:"搭乗ゲートはどこですか"},
-    {phrase:"My flight was ___.", answer:"delayed", meaning:"私のフライトは遅延した"},
-    {phrase:"I need to exchange ___ money.", answer:"some", meaning:"両替をしないといけない"},
-    {phrase:"Where can I rent a ___?", answer:"car", meaning:"車はどこで借りられますか"},
-    {phrase:"I'd like to book a ___.", answer:"room", meaning:"部屋を予約したいのですが"},
-    {phrase:"What time is ___?", answer:"checkout", meaning:"チェックアウトは何時ですか"},
     {phrase:"Could I get a wake-up ___?", answer:"call", meaning:"モーニングコールをお願いできますか"},
     {phrase:"Is breakfast ___ in the price?", answer:"included", meaning:"朝食は料金に含まれていますか"},
     {phrase:"I'd like a room ___ a view.", answer:"with", meaning:"眺めの良い部屋がいいです"},
@@ -562,15 +485,12 @@
     {phrase:"I got ___ on my way here.", answer:"lost", meaning:"ここに来る途中で迷った"},
     {phrase:"Which platform does the train leave ___?", answer:"from", meaning:"電車はどのホームから出発しますか"},
     {phrase:"I'd like a one-way ___.", answer:"ticket", meaning:"片道切符が欲しいのですが"},
-    {phrase:"This is my ___ visit to Japan.", answer:"first", meaning:"日本を訪れるのはこれが初めてです"},
     {phrase:"I'm here ___ business.", answer:"on", meaning:"仕事で来ています"},
     {phrase:"I'm just here ___ vacation.", answer:"on", meaning:"ただ休暇で来ています"},
     {phrase:"How long are you ___ for?", answer:"staying", meaning:"どのくらい滞在しますか"},
     {phrase:"I'll be staying ___ a week.", answer:"for", meaning:"1週間滞在する予定です"},
-    {phrase:"I really enjoyed ___ trip.", answer:"the", meaning:"旅行を本当に楽しみました"},
     {phrase:"It's a small ___.", answer:"world", meaning:"世間は狭いですね"},
     {phrase:"Let's keep ___ touch.", answer:"in", meaning:"連絡を取り合いましょう"},
-    {phrase:"I really appreciate ___ help.", answer:"your", meaning:"あなたの助けに本当に感謝しています"},
     {phrase:"I owe you ___.", answer:"one", meaning:"借りができました"},
     {phrase:"It was my ___.", answer:"pleasure", meaning:"どういたしまして(私の喜びでした)"},
     {phrase:"Congratulations ___ your success!", answer:"on", meaning:"成功おめでとうございます"},
@@ -579,7 +499,6 @@
     {phrase:"I wish you all the ___.", answer:"best", meaning:"あなたの幸せを願っています"},
     {phrase:"Good ___ with your exam!", answer:"luck", meaning:"試験頑張ってね"},
     {phrase:"Take ___ of yourself.", answer:"care", meaning:"お大事に"},
-    {phrase:"I'll miss you ___ much.", answer:"so", meaning:"あなたがとても恋しくなります"},
     {phrase:"Have a safe ___ home.", answer:"trip", meaning:"気をつけて帰ってね"},
     {phrase:"Please give my regards ___ your family.", answer:"to", meaning:"ご家族によろしくお伝えください"},
     {phrase:"I hope to see you ___ soon.", answer:"again", meaning:"また近いうちに会えるといいですね"},
@@ -587,16 +506,10 @@
     {phrase:"I'm getting ___ to my new job.", answer:"used", meaning:"新しい仕事に慣れてきています"},
     {phrase:"He's not used ___ the cold.", answer:"to", meaning:"彼は寒さに慣れていない"},
     {phrase:"I'm looking ___ to the weekend.", answer:"forward", meaning:"週末を楽しみにしています"},
-    {phrase:"She's really into ___ music.", answer:"classical", meaning:"彼女はクラシック音楽に夢中だ"},
-    {phrase:"I can't stand ___ waiting.", answer:"waiting", meaning:"待つのが我慢できない"},
     {phrase:"He's obsessed ___ video games.", answer:"with", meaning:"彼はテレビゲームに夢中だ"},
     {phrase:"I'm not ___ the mood.", answer:"in", meaning:"そんな気分じゃない"},
-    {phrase:"I can't help but ___.", answer:"laugh", meaning:"笑わずにはいられない"},
-    {phrase:"It made me ___.", answer:"cry", meaning:"それで泣いてしまった"},
     {phrase:"I'm so excited ___ the trip.", answer:"about", meaning:"旅行についてとてもワクワクしている"},
     {phrase:"He got angry ___ no reason.", answer:"for", meaning:"彼は理由もなく怒った"},
-    {phrase:"I was surprised ___ the news.", answer:"by", meaning:"そのニュースに驚いた"},
-    {phrase:"She was disappointed ___ the results.", answer:"with", meaning:"彼女は結果に失望した"},
     {phrase:"I'm nervous ___ the interview.", answer:"about", meaning:"面接について緊張している"},
     {phrase:"He was relieved ___ hear the news.", answer:"to", meaning:"彼はその知らせを聞いて安心した"},
     {phrase:"I'm grateful ___ your support.", answer:"for", meaning:"あなたの支えに感謝しています"},
@@ -611,6 +524,82 @@
     {phrase:"She's determined ___ succeed.", answer:"to", meaning:"彼女は成功すると決意している"},
     {phrase:"I'm optimistic ___ the future.", answer:"about", meaning:"未来について楽観的だ"},
     {phrase:"He's committed ___ the plan.", answer:"to", meaning:"彼はその計画にコミットしている"},
+    {phrase:"Long time no ___.", answer:"see", meaning:"久しぶり"},
+    {phrase:"Once upon a ___.", answer:"time", meaning:"昔々(童話の始まりの決まり文句)"},
+    {phrase:"As soon as ___.", answer:"possible", meaning:"できるだけ早く"},
+    {phrase:"By the ___.", answer:"way", meaning:"ところで"},
+    {phrase:"In the nick of ___.", answer:"time", meaning:"ギリギリのタイミングで"},
+    {phrase:"Better late than ___.", answer:"never", meaning:"遅くともやらないよりまし"},
+    {phrase:"Out of the ___.", answer:"blue", meaning:"突然に"},
+    {phrase:"Once in a blue ___.", answer:"moon", meaning:"ごくまれに"},
+    {phrase:"It's a piece of ___.", answer:"cake", meaning:"それは簡単なことだ"},
+    {phrase:"I'm feeling under the ___.", answer:"weather", meaning:"体調が悪い"},
+    {phrase:"I'll give him a piece of my ___.", answer:"mind", meaning:"彼に率直に苦言を言うつもりだ"},
+    {phrase:"He'll do it at the drop of a ___.", answer:"hat", meaning:"彼はすぐに、ためらわずやる"},
+    {phrase:"It's on the tip of my ___.", answer:"tongue", meaning:"のどまで出かかっている(思い出せない)"},
+    {phrase:"It cost an arm and a ___.", answer:"leg", meaning:"それはとても高かった"},
+    {phrase:"You hit the nail on the ___.", answer:"head", meaning:"あなたはまさに的を射た"},
+    {phrase:"The ball is in your ___.", answer:"court", meaning:"あなた次第だ"},
+    {phrase:"Don't let the cat out of the ___.", answer:"bag", meaning:"秘密をばらさないで"},
+    {phrase:"That kills two birds with one ___.", answer:"stone", meaning:"それは一石二鳥だ"},
+    {phrase:"That'll happen when pigs ___.", answer:"fly", meaning:"それはあり得ない話だ"},
+    {phrase:"That just adds insult to ___.", answer:"injury", meaning:"それはさらに傷口に塩を塗るようなものだ"},
+    {phrase:"Stop beating around the ___.", answer:"bush", meaning:"遠回しに言うのはやめて"},
+    {phrase:"I'll just bite the ___.", answer:"bullet", meaning:"腹をくくってやることにする"},
+    {phrase:"Let's cut to the ___.", answer:"chase", meaning:"本題に入りましょう"},
+    {phrase:"The situation got out of ___.", answer:"hand", meaning:"状況は手に負えなくなった"},
+    {phrase:"He always goes the extra ___.", answer:"mile", meaning:"彼はいつも一層努力する"},
+    {phrase:"Hang in ___.", answer:"there", meaning:"頑張り続けて"},
+    {phrase:"She had a change of ___.", answer:"heart", meaning:"彼女は気持ちが変わった"},
+    {phrase:"We're in the same ___.", answer:"boat", meaning:"私たちは同じ状況にある"},
+    {phrase:"Everyone jumped on the ___.", answer:"bandwagon", meaning:"みんな流行に乗った"},
+    {phrase:"Keep an eye ___ him.", answer:"on", meaning:"彼を見張っていて"},
+    {phrase:"To make a long story ___, we won.", answer:"short", meaning:"手短に言うと、私たちは勝った"},
+    {phrase:"I think I missed the ___.", answer:"boat", meaning:"好機を逃したと思う"},
+    {phrase:"She's on cloud ___.", answer:"nine", meaning:"彼女はとても幸せだ"},
+    {phrase:"Once bitten, twice ___.", answer:"shy", meaning:"一度失敗すると慎重になる"},
+    {phrase:"Stop pulling my ___.", answer:"leg", meaning:"からかうのはやめて"},
+    {phrase:"Don't spill the ___.", answer:"beans", meaning:"秘密を漏らさないで"},
+    {phrase:"That was the last ___.", answer:"straw", meaning:"それが我慢の限界だった"},
+    {phrase:"I won't throw in the ___.", answer:"towel", meaning:"私は諦めない"},
+    {phrase:"Time flies when you're having ___.", answer:"fun", meaning:"楽しい時は時間が経つのが早い"},
+    {phrase:"It happened right under my ___.", answer:"nose", meaning:"それは私の目の前で起きた"},
+    {phrase:"The plan is still up in the ___.", answer:"air", meaning:"その計画はまだ未定だ"},
+    {phrase:"When it rains, it ___.", answer:"pours", meaning:"悪いことは重なるものだ"},
+    {phrase:"You can say that ___.", answer:"again", meaning:"全くその通り"},
+    {phrase:"Birds of a feather flock ___.", answer:"together", meaning:"類は友を呼ぶ"},
+    {phrase:"Don't count your chickens before they ___.", answer:"hatch", meaning:"取らぬ狸の皮算用"},
+    {phrase:"Every cloud has a silver ___.", answer:"lining", meaning:"どんな不幸にも良い面がある"},
+    {phrase:"That's easier said than ___.", answer:"done", meaning:"言うは易く行うは難し"},
+    {phrase:"The early bird catches the ___.", answer:"worm", meaning:"早起きは三文の徳"},
+    {phrase:"When in Rome, do as the Romans ___.", answer:"do", meaning:"郷に入っては郷に従え"},
+    {phrase:"You can't judge a book by its ___.", answer:"cover", meaning:"見かけで判断してはいけない"},
+    {phrase:"Absence makes the heart grow ___.", answer:"fonder", meaning:"会えない時間が愛を育てる"},
+    {phrase:"All that glitters is not ___.", answer:"gold", meaning:"光るもの必ずしも金ならず"},
+    {phrase:"Curiosity killed the ___.", answer:"cat", meaning:"好奇心は猫をも殺す"},
+    {phrase:"Don't put all your eggs in one ___.", answer:"basket", meaning:"一つに頼りすぎるな"},
+    {phrase:"The grass is always greener on the other ___.", answer:"side", meaning:"隣の芝生は青い"},
+    {phrase:"It takes two to ___.", answer:"tango", meaning:"喧嘩両成敗(2人揃って初めて成立する)"},
+    {phrase:"No pain, no ___.", answer:"gain", meaning:"苦労なくして得るものなし"},
+    {phrase:"The pen is mightier than the ___.", answer:"sword", meaning:"ペンは剣より強し"},
+    {phrase:"There's no place like ___.", answer:"home", meaning:"我が家に勝る場所はない"},
+    {phrase:"A picture is worth a thousand ___.", answer:"words", meaning:"百聞は一見にしかず"},
+    {phrase:"He's barking up the wrong ___.", answer:"tree", meaning:"彼は見当違いのことをしている"},
+    {phrase:"She burned the midnight ___.", answer:"oil", meaning:"彼女は夜遅くまで働いた"},
+    {phrase:"We'll go, come rain or ___.", answer:"shine", meaning:"何があっても行きます"},
+    {phrase:"Let's cross that bridge when we come to ___.", answer:"it", meaning:"その時が来たら考えよう"},
+    {phrase:"He got a taste of his own ___.", answer:"medicine", meaning:"彼は自分がしたことの報いを受けた"},
+    {phrase:"Let's go back to the drawing ___.", answer:"board", meaning:"最初からやり直そう"},
+    {phrase:"He's in hot ___.", answer:"water", meaning:"彼はトラブルに巻き込まれている"},
+    {phrase:"Don't jump the ___.", answer:"gun", meaning:"早まった行動をしないで"},
+    {phrase:"Keep your chin ___.", answer:"up", meaning:"元気を出して"},
+    {phrase:"We'll leave no stone ___.", answer:"unturned", meaning:"あらゆる手を尽くします"},
+    {phrase:"That rings a ___.", answer:"bell", meaning:"それは聞き覚えがある"},
+    {phrase:"He's a chip off the old ___.", answer:"block", meaning:"彼は親に似ている"},
+    {phrase:"Don't cry over spilled ___.", answer:"milk", meaning:"覆水盆に返らず(後悔しても仕方ない)"},
+    {phrase:"That's the tip of the ___.", answer:"iceberg", meaning:"それは氷山の一角だ"},
+    {phrase:"I'm on the fence ___ this.", answer:"about", meaning:"これについてはまだ迷っている"},
+    {phrase:"Let's not beat a dead ___.", answer:"horse", meaning:"もう終わったことを蒸し返すのはやめよう"},
   ];
 
   function firstLetter(w){ return w.trim().toLowerCase()[0]; }
@@ -773,7 +762,7 @@
       suggestionCooldown:new Map(), // word -> rounds remaining before it can be suggested again
       timeoutCount:0, // total timeouts this game (not reset by correct answers); 2 total ends the game
       mode: gameMode, minLength, sameStartEnd, reverseMode, reverseTarget: null, reverseHintText: null,
-      phraseMode, usedPhrases: new Set(), currentPhrase: null
+      phraseMode, usedPhrases: new Set(), currentPhrase: null, currentQuestionMisses: 0
     };
     els.startOverlay.style.display = 'none';
     els.overOverlay.style.display = 'none';
@@ -816,6 +805,7 @@
       const idx = PHRASES.indexOf(pool[Math.floor(Math.random()*pool.length)]);
       state.currentPhrase = PHRASES[idx];
       state.currentPhraseIndex = idx;
+      state.currentQuestionMisses = 0;
       els.ruleText.innerHTML = `📝 <b style="font-size:20px;">${state.currentPhrase.phrase}</b><br><span style="font-size:12px;">空欄に入る1語を入力してください</span>`;
     } else if(state.reverseMode){
       // pick a fresh target word and show its Japanese meaning as the clue.
@@ -966,22 +956,38 @@
 
   function handleTimeout(){
     sndTimeUp();
+
+    // ---- phrase mode: uses its own PER-QUESTION miss counter (not the shared
+    // game-wide one) — 2 misses on the SAME question ends the game. ----
+    if(state.phraseMode){
+      state.currentQuestionMisses = (state.currentQuestionMisses || 0) + 1;
+      state.roundCount += 1;
+      updateHUD();
+
+      if(state.currentQuestionMisses < 2){
+        const answer = state.currentPhrase.answer;
+        els.ruleText.innerHTML = `📝 <b style="font-size:20px;">${state.currentPhrase.phrase}</b><br><span style="font-size:12px;">空欄に入る1語を入力してください</span><br><span style="font-size:13px; color:var(--gold);">💡 ヒント: 「${answer[0].toUpperCase()}」から始まる${answer.length}文字の単語</span>`;
+        setFeedback('⏰ 時間切れ・不正解！ヒントを見てもう一度挑戦してください(この問題であと1回失敗するとゲーム終了です)', false);
+        restartTimerSameTurn();
+        return;
+      }
+
+      const completed = state.currentPhrase.phrase.replace('___', state.currentPhrase.answer);
+      setFeedback('⏰ この問題で2回目の不正解！正解はこちら:', false);
+      renderSuggestionBox([`${completed}(${state.currentPhrase.meaning})`], '💡 正解', ()=>{ endGame(); }, true);
+      return;
+    }
+
+    // ---- all other modes: shared game-wide counter (2 timeouts total ends the game) ----
     state.timeoutCount += 1;
 
-    // first timeout of the game: for phrase/reverse mode, keep the SAME question
-    // and reveal an extra hint instead of jumping to a new one — the player gets
-    // a genuine second attempt at what they were already working on.
+    // first timeout of the game: for reverse mode, keep the SAME question and
+    // reveal an extra hint instead of jumping to a new one — the player gets a
+    // genuine second attempt at what they were already working on.
     if(state.timeoutCount < 2){
       state.roundCount += 1;
       updateHUD();
 
-      if(state.phraseMode && state.currentPhrase){
-        const answer = state.currentPhrase.answer;
-        els.ruleText.innerHTML = `📝 <b style="font-size:20px;">${state.currentPhrase.phrase}</b><br><span style="font-size:12px;">空欄に入る1語を入力してください</span><br><span style="font-size:13px; color:var(--gold);">💡 ヒント: 「${answer[0].toUpperCase()}」から始まる${answer.length}文字の単語</span>`;
-        setFeedback('⏰ 時間切れ・不正解！ヒントを見てもう一度挑戦してください(あと1回失敗するとゲーム終了です)', false);
-        restartTimerSameTurn();
-        return;
-      }
       if(state.reverseMode && state.reverseTarget){
         const target = state.reverseTarget;
         const hintLine = state.reverseHintText ? `🇯🇵 <b>${state.reverseHintText}</b><br>` : '';
@@ -1002,13 +1008,6 @@
     // so the game does not continue afterward.
     state.roundCount += 1;
     updateHUD();
-
-    if(state.phraseMode){
-      const completed = state.currentPhrase.phrase.replace('___', state.currentPhrase.answer);
-      setFeedback('⏰ このゲームで2回目の時間切れ！正解はこちら:', false);
-      renderSuggestionBox([`${completed}(${state.currentPhrase.meaning})`], '💡 正解', ()=>{ endGame(); }, true);
-      return;
-    }
 
     if(state.reverseMode){
       const meaning = state.reverseHintText ? `(${state.reverseHintText})` : '';
@@ -1179,7 +1178,7 @@
     hard1: '6文字以上の単語しか使えません(例: teacher)。正解例も6文字以上のみ表示されます。',
     hard2: '同じ文字で始まり、同じ文字で終わる単語しか使えません(例: kick, level)。通常のしりとりと同様、前の単語の最後の文字から始めるので、結果的にゲーム全体が同じ1文字を軸にした単語になります。正解例もこの条件を満たす単語のみ表示されます。',
     reverse: '日本語の意味のヒントが表示されるので、それに合う英単語をピッタリ入力してください。しりとりのつながりはなく、毎回新しい単語が出題されます。',
-    phrase: '"How ___ you?"のような空欄付きの英文が表示されるので、空欄に入る1語だけを入力してください(答えは "are" のように単語のみでOK)。日常会話でよく使う表現を集めています。',
+    phrase: '"How ___ you?"のような空欄付きの英文が表示されるので、空欄に入る1語だけを入力してください(答えは "are" のように単語のみでOK)。日常会話でよく使う表現・文パターンを集めています。※1問につき2回間違えるとゲーム終了です(他のモードとは違い、通算ではなく1問ごとの回数です)。',
   };
   function selectMode(mode){
     gameMode = mode;
