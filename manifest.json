@@ -1,0 +1,18 @@
+{
+  "name": "英単語しりとり 学習版",
+  "short_name": "英単語しりとり",
+  "description": "英語のWord Chainで語彙力を鍛える学習ゲーム",
+  "start_url": "./english-word-chain.html",
+  "display": "standalone",
+  "background_color": "#12141c",
+  "theme_color": "#12141c",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
