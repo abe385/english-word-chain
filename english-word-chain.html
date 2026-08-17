@@ -772,7 +772,7 @@
       requiredLetter:null, timeLeft:0, alive:true, awaitingReveal:false,
       suggestionCooldown:new Map(), // word -> rounds remaining before it can be suggested again
       timeoutCount:0, // total timeouts this game (not reset by correct answers); 2 total ends the game
-      mode: gameMode, minLength, sameStartEnd, reverseMode, reverseTarget: null,
+      mode: gameMode, minLength, sameStartEnd, reverseMode, reverseTarget: null, reverseHintText: null,
       phraseMode, usedPhrases: new Set(), currentPhrase: null
     };
     els.startOverlay.style.display = 'none';
@@ -824,14 +824,21 @@
       els.ruleText.textContent = '💭 ヒントを準備しています…';
       let target = null;
       let hint = null;
-      for(let attempt = 0; attempt < 5 && !hint; attempt++){
+      for(let attempt = 0; attempt < 8 && !hint; attempt++){
         const candidate = ALL_WORDS_ARR[Math.floor(Math.random()*ALL_WORDS_ARR.length)];
         if(state.usedWords.has(candidate)) continue;
+        // Require a real English-dictionary definition before accepting the word.
+        // This filters out proper nouns (names, places) that slipped into the word
+        // list — those don't have dictionary definitions, only a katakana reading
+        // when "translated", which isn't a useful meaning-guessing clue.
+        const def = await fetchEnglishDefinition(candidate);
+        if(!def) continue;
         target = candidate;
         hint = await fetchJapaneseMeaning(candidate);
       }
       if(!target){ target = ALL_WORDS_ARR[Math.floor(Math.random()*ALL_WORDS_ARR.length)]; }
       state.reverseTarget = target;
+      state.reverseHintText = hint || null;
       if(hint){
         els.ruleText.innerHTML = `🇯🇵 <b>${hint}</b><br><span style="font-size:12px;">この意味の英単語を入力してください(${target.length}文字)</span>`;
       } else {
@@ -851,6 +858,15 @@
 
     state.timeLeft = timeForCorrectCount(state.correctCount);
     updateTimerDisplay();
+    timerHandle = setInterval(tick, 1000);
+  }
+
+  // Restarts the timer for the CURRENT question without picking a new one —
+  // used for the first-timeout "here's a hint, try again" flow in phrase/reverse mode.
+  function restartTimerSameTurn(){
+    state.timeLeft = timeForCorrectCount(state.correctCount);
+    updateTimerDisplay();
+    if(timerHandle) clearInterval(timerHandle);
     timerHandle = setInterval(tick, 1000);
   }
 
@@ -952,10 +968,29 @@
     sndTimeUp();
     state.timeoutCount += 1;
 
-    // first timeout of the game: just mark it wrong and try again — no reveal yet
+    // first timeout of the game: for phrase/reverse mode, keep the SAME question
+    // and reveal an extra hint instead of jumping to a new one — the player gets
+    // a genuine second attempt at what they were already working on.
     if(state.timeoutCount < 2){
       state.roundCount += 1;
       updateHUD();
+
+      if(state.phraseMode && state.currentPhrase){
+        const answer = state.currentPhrase.answer;
+        els.ruleText.innerHTML = `📝 <b style="font-size:20px;">${state.currentPhrase.phrase}</b><br><span style="font-size:12px;">空欄に入る1語を入力してください</span><br><span style="font-size:13px; color:var(--gold);">💡 ヒント: 「${answer[0].toUpperCase()}」から始まる${answer.length}文字の単語</span>`;
+        setFeedback('⏰ 時間切れ・不正解！ヒントを見てもう一度挑戦してください(あと1回失敗するとゲーム終了です)', false);
+        restartTimerSameTurn();
+        return;
+      }
+      if(state.reverseMode && state.reverseTarget){
+        const target = state.reverseTarget;
+        const hintLine = state.reverseHintText ? `🇯🇵 <b>${state.reverseHintText}</b><br>` : '';
+        els.ruleText.innerHTML = `${hintLine}<span style="font-size:12px;">この意味の英単語を入力してください(${target.length}文字)</span><br><span style="font-size:13px; color:var(--gold);">💡 追加ヒント: 「${target[0].toUpperCase()}」から始まります</span>`;
+        setFeedback('⏰ 時間切れ・不正解！ヒントを見てもう一度挑戦してください(あと1回失敗するとゲーム終了です)', false);
+        restartTimerSameTurn();
+        return;
+      }
+
       setFeedback('⏰ 時間切れ・不正解！もう一度挑戦してください(このゲームであと1回時間切れになるとゲーム終了です)', false);
       setTimeout(()=>{ if(state.alive) nextTurn(); }, 1600);
       return;
@@ -976,8 +1011,9 @@
     }
 
     if(state.reverseMode){
+      const meaning = state.reverseHintText ? `(${state.reverseHintText})` : '';
       setFeedback('⏰ このゲームで2回目の時間切れ！正解はこちら:', false);
-      renderSuggestionBox([state.reverseTarget], '💡 正解', ()=>{ endGame(); });
+      renderSuggestionBox([`${state.reverseTarget}${meaning}`], '💡 正解', ()=>{ endGame(); }, true);
       return;
     }
 
