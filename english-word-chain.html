@@ -902,6 +902,10 @@
         // hint (falls through to the structural length/letter hint below) is far
         // less harmful than showing an incorrect meaning.
         hint = await fetchJapaneseMeaningViaDeepL(candidate);
+        // Reject pure-katakana "translations" (loanword transliterations like
+        // "shooter"→"シューター") — they just spell out the sound, not the
+        // meaning, so they're not a useful clue on their own. Try another word.
+        if(hint && isPureKatakana(hint)) hint = null;
       }
       if(!target){ target = ALL_WORDS_ARR[Math.floor(Math.random()*ALL_WORDS_ARR.length)]; }
       state.reverseTarget = target;
@@ -1310,6 +1314,16 @@
   // back untranslated or transliterated into romaji (e.g. "onna-no-ko").
   function looksLikeJapanese(text){
     return /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/.test(text);
+  }
+  // True if the text is ENTIRELY katakana (plus spaces/punctuation) with no
+  // hiragana or kanji at all — this usually means the "translation" is just a
+  // phonetic loanword rendering (e.g. "shooter" → "シューター") rather than an
+  // actual explanation of meaning. Fine as a bonus detail in the 5-example
+  // suggestion box, but useless (circular) as the ONLY clue in reverse mode.
+  function isPureKatakana(text){
+    const stripped = text.replace(/[\s・、。]/g, '');
+    if(!stripped) return false;
+    return /^[\u30A0-\u30FF]+$/.test(stripped);
   }
   function isUsableTranslation(text, originalWord){
     if(!text) return false;
