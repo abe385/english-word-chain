@@ -76,8 +76,8 @@
   .chainArea::-webkit-scrollbar-thumb{background:#3a405c;border-radius:4px;}
   .chain{ display:flex; flex-wrap:wrap; gap:6px 6px; align-items:center; }
   .chip{ background:var(--ink-2); border:1px solid #37405e; color:var(--paper); padding:5px 10px; border-radius:999px; font-size:13px; font-weight:500; }
-  .arrow{color:#5b6488; font-size:12px;}
-  .chainArea .empty{ color:#6c7290; font-size:13px; padding:6px 2px; }
+  .arrow{color:#8891b8; font-size:12px;}
+  .chainArea .empty{ color:#9aa2c8; font-size:13px; padding:6px 2px; }
 
   .inputRow{ display:flex; gap:8px; }
   .inputRow input{
@@ -115,7 +115,7 @@
   #lookupBtn:hover{ background:var(--accent-dark); }
 
   .feedback{ min-height:34px; font-size:14px; text-align:center; color:var(--danger); font-weight:700; line-height:1.5; }
-  .feedback.ok{color:var(--ok);}
+  .feedback.ok{color:#4fc98a;}
   .hint{ text-align:center; font-size:11px; color:#9aa2c0; line-height:1.6; }
 
   .suggestBox{
@@ -160,7 +160,7 @@
   }
   .bigscore{ font-family:'Shippori Mincho', serif; font-size:40px; font-weight:800; color:var(--accent-dark); margin:6px 0 2px; }
   .scorelabel{font-size:11px; letter-spacing:0.2em; color:var(--indigo); margin-bottom:6px;}
-  .installNote{ font-size:11px; color:#7a8098; text-align:center; line-height:1.7; padding-top:2px; }
+  .installNote{ font-size:11px; color:#54617e; text-align:center; line-height:1.7; padding-top:2px; }
 
   .modeBlock{
     text-align:left; background:rgba(47,143,107,0.08); border:1px solid #2c3145;
@@ -175,7 +175,18 @@
     font-family:'Zen Kaku Gothic New', sans-serif; line-height:1.4;
   }
   .modeBtn.selected{ background:var(--indigo); color:#f2ecda; border-color:var(--indigo); }
-  .modeNote{ font-size:11px; color:#5a5647; margin-top:8px; line-height:1.6; }
+  .modeNote{ font-size:11px; color:#4a4638; margin-top:8px; line-height:1.6; }
+
+  .rulesDetails{ text-align:left; margin-top:14px; }
+  .rulesDetails summary{
+    cursor:pointer; font-size:13px; font-weight:700; color:var(--indigo);
+    padding:10px 4px; list-style:none; display:flex; align-items:center; gap:6px;
+    border-top:1px solid var(--paper-dim);
+  }
+  .rulesDetails summary::-webkit-details-marker{ display:none; }
+  .rulesDetails summary::after{ content:'▾'; margin-left:auto; color:var(--indigo); }
+  .rulesDetails[open] summary::after{ content:'▴'; }
+  .rulesDetails p{ font-size:12.5px; color:#3a3728; line-height:1.8; margin-top:8px; }
 
   .dictWord{ font-family:'Shippori Mincho', serif; font-size:24px; font-weight:800; text-align:center; margin-bottom:2px; }
   .dictPos{ text-align:center; font-size:12px; color:var(--indigo); font-weight:700; margin-bottom:12px; }
@@ -244,16 +255,6 @@
 <div class="overlay" id="startOverlay">
   <div class="card">
     <h2>英語で遊ぼう！(テスト版)</h2>
-    <p>
-    英語のWord Chain(しりとり)で語彙力を鍛えるゲームです。<br>
-    現在、一部の方にお試しいただいているテスト版です。<br><br>
-    ・制限時間は60秒からスタート。3問正解ごとに時間が短くなり、9問正解すると30秒固定になります。<br>
-    ・「回答」ボタンでいつでも正誤判定。<br>
-    ・1ゲームで時間切れが合計2回になった場合は、正解例を5つ表示してゲーム終了になります(間に正解を挟んでも回数はリセットされません)。<br>
-    ・わからない単語は📖で意味・使い方を調べられます。<br>
-    ・🎤で音声入力もできます。<br><br>
-    <b>このテスト版では10問まで挑戦できます。</b>ぜひ最後まで遊んでみて、感想を聞かせてください！
-    </p>
     <div class="modeBlock">
       <div class="modeLabel">🎚️ モードを選ぶ</div>
       <div class="modeRow">
@@ -267,6 +268,19 @@
       <div class="modeNote" id="modeNote">すべての単語が使えます。</div>
     </div>
     <button class="primary" id="startBtn">はじめる</button>
+    <details class="rulesDetails">
+      <summary>📖 くわしい遊び方・ルールを見る</summary>
+      <p>
+      英語のWord Chain(しりとり)で語彙力を鍛えるゲームです。<br>
+      現在、一部の方にお試しいただいているテスト版です。<br><br>
+      ・制限時間は60秒からスタート。3問正解ごとに時間が短くなり、9問正解すると30秒固定になります。<br>
+      ・「回答」ボタンでいつでも正誤判定。<br>
+      ・1ゲームで時間切れが合計2回になった場合は、正解例を5つ表示してゲーム終了になります(間に正解を挟んでも回数はリセットされません)。<br>
+      ・わからない単語は📖で意味・使い方を調べられます。<br>
+      ・🎤で音声入力もできます。<br><br>
+      <b>このテスト版では10問まで挑戦できます。</b>ぜひ最後まで遊んでみて、感想を聞かせてください！
+      </p>
+    </details>
   </div>
 </div>
 
