@@ -48,12 +48,12 @@
   .iconBtn.active{ border-color:var(--gold); color:var(--gold); }
   .header .eyebrow{ letter-spacing:0.3em; font-size:11px; color:var(--indigo-lt); font-weight:700; }
   .header h1{ font-family:'Shippori Mincho', serif; font-size:25px; font-weight:800; margin:4px 0 2px; color:var(--paper); }
-  .header .sub{ font-size:12px; color:#9aa3bd; }
+  .header .sub{ font-size:12px; color:#c3cbe3; }
   .header::after{ content:""; display:block; width:64px;height:2px; background:var(--gold); margin:10px auto 0; opacity:0.7; }
 
   .status{ display:flex; justify-content:space-between; gap:8px; }
   .status .box{ flex:1; background:var(--ink-2); border:1px solid #2c3145; border-radius:10px; padding:8px 6px; text-align:center; }
-  .status .box .label{ font-size:10px; color:#8890a8; letter-spacing:0.08em; }
+  .status .box .label{ font-size:10px; color:#b0b8d2; letter-spacing:0.08em; }
   .status .box .value{ font-family:'Shippori Mincho', serif; font-size:19px; font-weight:700; color:var(--gold); margin-top:2px; }
   .status .box.timer .value{color:var(--paper);}
   .status .box.timer.warn .value{color:var(--danger);}
@@ -85,7 +85,7 @@
     border-radius:10px; padding:13px 14px; font-size:17px; outline:none; transition:border-color 150ms ease;
   }
   .inputRow input:focus{ border-color:var(--gold); }
-  .inputRow input::placeholder{color:#666e8c;}
+  .inputRow input::placeholder{color:#8a93b3;}
   .inputRow button{
     border:none; border-radius:10px; padding:0 16px; font-size:14px; font-weight:700; cursor:pointer;
     font-family:'Zen Kaku Gothic New', sans-serif; transition:background 150ms ease, transform 100ms ease;
@@ -110,13 +110,13 @@
     background:rgba(47,143,107,0.08); border:1px solid #2c3145; border-radius:12px; padding:10px 12px 12px;
   }
   .dictLabel{ font-size:12.5px; font-weight:700; color:var(--accent); margin-bottom:2px; }
-  .dictNote{ font-size:11px; color:#8890a8; line-height:1.5; margin-bottom:8px; }
+  .dictNote{ font-size:11px; color:#b0b8d2; line-height:1.5; margin-bottom:8px; }
   #lookupBtn{ background:var(--accent); color:#fff; white-space:nowrap; }
   #lookupBtn:hover{ background:var(--accent-dark); }
 
   .feedback{ min-height:34px; font-size:14px; text-align:center; color:var(--danger); font-weight:700; line-height:1.5; }
   .feedback.ok{color:var(--ok);}
-  .hint{ text-align:center; font-size:11px; color:#666e8c; line-height:1.6; }
+  .hint{ text-align:center; font-size:11px; color:#9aa2c0; line-height:1.6; }
 
   .suggestBox{
     background:var(--ink-2); border:1px solid var(--gold); border-radius:10px; padding:10px 12px; font-size:13px;
@@ -130,7 +130,7 @@
   .suggestBox .wordRow .w{
     background:#2a2f42; border-radius:999px; padding:3px 10px; font-weight:700; color:var(--gold); flex-shrink:0;
   }
-  .suggestBox .wordRow .m{ font-size:12.5px; color:#c9d2e8; line-height:1.5; flex:1; min-width:120px; }
+  .suggestBox .wordRow .m{ font-size:12.5px; color:#dbe1f4; line-height:1.5; flex:1; min-width:120px; }
   #finishRoundBtn{
     margin-top:12px; width:100%; background:var(--accent); color:#fff; border:none;
     border-radius:10px; padding:12px; font-weight:700; font-size:14px; cursor:pointer;
@@ -262,6 +262,7 @@
         <button class="modeBtn" data-mode="hard2" id="modeHard2Btn">ハード②<br>(始終が同じ文字)</button>
         <button class="modeBtn" data-mode="reverse" id="modeReverseBtn">🔄逆<br>(和→英クイズ)</button>
         <button class="modeBtn" data-mode="phrase" id="modePhraseBtn">📝空欄補充<br>(よく使う表現)</button>
+        <button class="modeBtn" data-mode="anagram" id="modeAnagramBtn">🔤アナグラム<br>(並び替え)</button>
       </div>
       <div class="modeNote" id="modeNote">すべての単語が使えます。</div>
     </div>
@@ -702,11 +703,13 @@
   // target word won't be re-selected for at least the next 5 times one is picked.
   const phraseCooldown = new Map();   // phrase index -> rounds remaining
   const reverseWordCooldown = new Map(); // word -> rounds remaining
+  const anagramWordCooldown = new Map(); // word -> rounds remaining
   let gameMode = 'normal'; // 'normal' | 'hard1' (6+ letter words only) | 'hard2' (starts & ends with same letter)
   const MODE_MIN_LENGTH = { normal: 0, hard1: 6, hard2: 0, reverse: 0 };
   const MODE_SAME_START_END = { normal: false, hard1: false, hard2: true, reverse: false };
   const MODE_IS_REVERSE = { normal: false, hard1: false, hard2: false, reverse: true, phrase: false };
-  const MODE_IS_PHRASE = { normal: false, hard1: false, hard2: false, reverse: false, phrase: true };
+  const MODE_IS_PHRASE = { normal: false, hard1: false, hard2: false, reverse: false, phrase: true, anagram: false };
+  const MODE_IS_ANAGRAM = { normal: false, hard1: false, hard2: false, reverse: false, phrase: false, anagram: true };
   let isPremium = false;
   let lookupCount = 0;
   const FREE_ROUNDS = 10;
@@ -820,13 +823,15 @@
     const sameStartEnd = !!MODE_SAME_START_END[gameMode];
     const reverseMode = !!MODE_IS_REVERSE[gameMode];
     const phraseMode = !!MODE_IS_PHRASE[gameMode];
+    const anagramMode = !!MODE_IS_ANAGRAM[gameMode];
     state = {
       correctCount:0, roundCount:0, usedWords:new Set(), chainDisplay:[],
       requiredLetter:null, timeLeft:0, alive:true, awaitingReveal:false,
       suggestionCooldown:new Map(), // word -> rounds remaining before it can be suggested again
       timeoutCount:0, // total timeouts this game (not reset by correct answers); 2 total ends the game
       mode: gameMode, minLength, sameStartEnd, reverseMode, reverseTarget: null, reverseHintText: null,
-      phraseMode, usedPhrases: new Set(), currentPhrase: null, currentQuestionMisses: 0
+      phraseMode, usedPhrases: new Set(), currentPhrase: null, currentQuestionMisses: 0,
+      anagramMode, anagramTarget: null, anagramHintText: null, anagramScrambled: null
     };
     els.startOverlay.style.display = 'none';
     els.overOverlay.style.display = 'none';
@@ -840,7 +845,9 @@
       ? '<div class="empty">空欄に入る単語を当てて、文を完成させよう。</div>'
       : (reverseMode
         ? '<div class="empty">日本語のヒントを見て、英単語を当てよう。</div>'
-        : '<div class="empty">最初の単語は自由。何か英単語を入力しよう。</div>');
+        : (anagramMode
+          ? '<div class="empty">バラバラの文字を並び替えて、単語を当てよう。</div>'
+          : '<div class="empty">最初の単語は自由。何か英単語を入力しよう。</div>'));
     els.suggestArea.innerHTML = '';
     updateHUD();
     await nextTurn();
@@ -875,7 +882,7 @@
       state.currentPhrase = PHRASES[idx];
       state.currentPhraseIndex = idx;
       state.currentQuestionMisses = 0;
-      els.ruleText.innerHTML = `📝 <b style="font-size:20px;">${state.currentPhrase.phrase}</b><br><span style="font-size:12px;">空欄に入る1語を入力してください</span>`;
+      els.ruleText.innerHTML = `🇯🇵 <span style="font-size:14px; color:var(--accent-dark); font-weight:700;">${escapeHtml(state.currentPhrase.meaning)}</span><br><b style="font-size:20px;">${state.currentPhrase.phrase}</b><br><span style="font-size:12px;">空欄に入る1語を入力してください</span>`;
     } else if(state.reverseMode){
       // pick a fresh target word and show its Japanese meaning as the clue.
       // Timer doesn't start until the hint is ready, so lookup latency doesn't
@@ -917,6 +924,33 @@
         // dictionary lookup failed — fall back to a structural hint so the mode still works offline
         els.ruleText.innerHTML = `🔤 <b>${target.length}文字</b>で、「${target[0].toUpperCase()}」から始まる英単語<br><span style="font-size:12px;">(意味の取得に失敗したため文字ヒントに切り替えました)</span>`;
       }
+    } else if(state.anagramMode){
+      // pick a fresh word, scramble its letters, and (when available) show a
+      // Japanese meaning as a bonus hint. Same quality pipeline as reverse mode.
+      els.ruleText.textContent = '💭 問題を準備しています…';
+      decayCooldown(anagramWordCooldown);
+      let target = null;
+      let hint = null;
+      for(let attempt = 0; attempt < 8 && !hint; attempt++){
+        const candidate = ALL_WORDS_ARR[Math.floor(Math.random()*ALL_WORDS_ARR.length)];
+        if(candidate.length < 4) continue; // too short to make a fun anagram
+        if(state.usedWords.has(candidate) || anagramWordCooldown.has(candidate)) continue;
+        const def = await fetchEnglishDefinition(candidate);
+        if(!def) continue;
+        target = candidate;
+        hint = await fetchJapaneseMeaningViaDeepL(candidate);
+        if(hint && isPureKatakana(hint)) hint = null;
+      }
+      if(!target){
+        const fallbackPool = ALL_WORDS_ARR.filter(w => w.length >= 4);
+        target = fallbackPool[Math.floor(Math.random()*fallbackPool.length)];
+      }
+      state.anagramTarget = target;
+      state.anagramHintText = hint || null;
+      state.anagramScrambled = scrambleWord(target);
+      registerCooldown(anagramWordCooldown, [target], 6); // excluded for the next 5 picks
+      const hintLine = hint ? `<br><span style="font-size:12px;">🇯🇵 ヒント: ${hint}</span>` : '';
+      els.ruleText.innerHTML = `🔤 <b style="font-size:26px; letter-spacing:4px;">${state.anagramScrambled.toUpperCase()}</b><br><span style="font-size:12px;">この文字を並び替えてできる単語を入力してください(${target.length}文字)</span>${hintLine}`;
     } else {
       // if the required starting letter has no words left, treat as a natural "chain complete" and reset
       if(state.requiredLetter && !hasAnyWordFor(state.requiredLetter, state.usedWords, state.minLength, state.sameStartEnd)){
@@ -1048,7 +1082,7 @@
 
       if(state.currentQuestionMisses < 2){
         const answer = state.currentPhrase.answer;
-        els.ruleText.innerHTML = `📝 <b style="font-size:20px;">${state.currentPhrase.phrase}</b><br><span style="font-size:12px;">空欄に入る1語を入力してください</span><br><span style="font-size:13px; color:var(--gold);">💡 ヒント: 「${answer[0].toUpperCase()}」から始まる${answer.length}文字の単語</span>`;
+        els.ruleText.innerHTML = `🇯🇵 <span style="font-size:14px; color:var(--accent-dark); font-weight:700;">${escapeHtml(state.currentPhrase.meaning)}</span><br><b style="font-size:20px;">${state.currentPhrase.phrase}</b><br><span style="font-size:12px;">空欄に入る1語を入力してください</span><br><span style="font-size:13px; color:var(--accent-dark);">💡 ヒント: 「${answer[0].toUpperCase()}」から始まる${answer.length}文字の単語</span>`;
         setFeedback('⏰ 時間切れ・不正解！ヒントを見てもう一度挑戦してください(この問題であと1回失敗するとゲーム終了です)', false);
         restartTimerSameTurn();
         return;
@@ -1073,7 +1107,16 @@
       if(state.reverseMode && state.reverseTarget){
         const target = state.reverseTarget;
         const hintLine = state.reverseHintText ? `🇯🇵 <b>${state.reverseHintText}</b><br>` : '';
-        els.ruleText.innerHTML = `${hintLine}<span style="font-size:12px;">この意味の英単語を入力してください(${target.length}文字)</span><br><span style="font-size:13px; color:var(--gold);">💡 追加ヒント: 「${target[0].toUpperCase()}」から始まります</span>`;
+        els.ruleText.innerHTML = `${hintLine}<span style="font-size:12px;">この意味の英単語を入力してください(${target.length}文字)</span><br><span style="font-size:13px; color:var(--accent-dark);">💡 追加ヒント: 「${target[0].toUpperCase()}」から始まります</span>`;
+        setFeedback('⏰ 時間切れ・不正解！ヒントを見てもう一度挑戦してください(あと1回失敗するとゲーム終了です)', false);
+        restartTimerSameTurn();
+        return;
+      }
+
+      if(state.anagramMode && state.anagramTarget){
+        const target = state.anagramTarget;
+        const hintLine = state.anagramHintText ? `<br><span style="font-size:12px;">🇯🇵 ヒント: ${state.anagramHintText}</span>` : '';
+        els.ruleText.innerHTML = `🔤 <b style="font-size:26px; letter-spacing:4px;">${state.anagramScrambled.toUpperCase()}</b><br><span style="font-size:12px;">この文字を並び替えてできる単語を入力してください(${target.length}文字)</span>${hintLine}<br><span style="font-size:13px; color:var(--accent-dark);">💡 追加ヒント: 「${target[0].toUpperCase()}」から始まります</span>`;
         setFeedback('⏰ 時間切れ・不正解！ヒントを見てもう一度挑戦してください(あと1回失敗するとゲーム終了です)', false);
         restartTimerSameTurn();
         return;
@@ -1095,6 +1138,13 @@
       const meaning = state.reverseHintText ? `(${state.reverseHintText})` : '';
       setFeedback('⏰ このゲームで2回目の時間切れ！正解はこちら:', false);
       renderSuggestionBox([`${state.reverseTarget}${meaning}`], '💡 正解', ()=>{ endGame(); }, true);
+      return;
+    }
+
+    if(state.anagramMode){
+      const meaning = state.anagramHintText ? `(${state.anagramHintText})` : '';
+      setFeedback('⏰ このゲームで2回目の時間切れ！正解はこちら:', false);
+      renderSuggestionBox([`${state.anagramTarget}${meaning}`], '💡 正解', ()=>{ endGame(); }, true);
       return;
     }
 
@@ -1204,6 +1254,25 @@
       return;
     }
 
+    // ---- anagram mode: must exactly match the scrambled word's original spelling ----
+    if(state.anagramMode){
+      if(norm !== state.anagramTarget){
+        setFeedback(`不正解: 並び替えてできる単語ではありません`, false); sndWrong(); return;
+      }
+      clearInterval(timerHandle);
+      state.usedWords.add(norm);
+      addChip(raw);
+      state.correctCount += 1;
+      state.roundCount += 1;
+      updateHUD();
+      sndCorrect();
+      setFeedback('✅ 正解！', true);
+      els.wordInput.value = '';
+      els.suggestArea.innerHTML = '';
+      nextTurn();
+      return;
+    }
+
     if(state.usedWords.has(norm)){ setFeedback('その単語はもう使いました。別の単語をどうぞ', false); sndWrong(); return; }
     if(state.requiredLetter && firstLetter(norm) !== state.requiredLetter){
       setFeedback(`「${state.requiredLetter.toUpperCase()}」から始まる単語を入力してください`, false); sndWrong(); return;
@@ -1254,6 +1323,7 @@
     hard2: document.getElementById('modeHard2Btn'),
     reverse: document.getElementById('modeReverseBtn'),
     phrase: document.getElementById('modePhraseBtn'),
+    anagram: document.getElementById('modeAnagramBtn'),
   };
   const modeNotes = {
     normal: 'すべての単語が使えます。',
@@ -1261,6 +1331,7 @@
     hard2: '同じ文字で始まり、同じ文字で終わる単語しか使えません(例: kick, level)。通常のしりとりと同様、前の単語の最後の文字から始めるので、結果的にゲーム全体が同じ1文字を軸にした単語になります。正解例もこの条件を満たす単語のみ表示されます。',
     reverse: '日本語の意味のヒントが表示されるので、それに合う英単語をピッタリ入力してください。しりとりのつながりはなく、毎回新しい単語が出題されます。',
     phrase: '"How ___ you?"のような空欄付きの英文が表示されるので、空欄に入る1語だけを入力してください(答えは "are" のように単語のみでOK)。日常会話でよく使う表現・文パターンを集めています。※1問につき2回間違えるとゲーム終了です(他のモードとは違い、通算ではなく1問ごとの回数です)。',
+    anagram: 'バラバラに並び替えられた英字(例: T E A C H R E)が表示されるので、正しい単語(teacher)を入力してください。日本語の意味のヒントも一緒に表示されます。',
   };
   function selectMode(mode){
     gameMode = mode;
@@ -1272,6 +1343,7 @@
   modeButtons.hard2.addEventListener('click', ()=> selectMode('hard2'));
   modeButtons.reverse.addEventListener('click', ()=> selectMode('reverse'));
   modeButtons.phrase.addEventListener('click', ()=> selectMode('phrase'));
+  modeButtons.anagram.addEventListener('click', ()=> selectMode('anagram'));
   document.getElementById('startBtn').addEventListener('click', startGame);
   document.getElementById('retryBtn').addEventListener('click', ()=>{
     els.overOverlay.style.display = 'none';
@@ -1324,6 +1396,22 @@
     const stripped = text.replace(/[\s・、。]/g, '');
     if(!stripped) return false;
     return /^[\u30A0-\u30FF]+$/.test(stripped);
+  }
+  // Shuffles a word's letters for anagram mode. Retries if the shuffle happens
+  // to land back on the original word (possible for short/repetitive words).
+  function scrambleWord(word){
+    const letters = word.split('');
+    let scrambled = word;
+    let guard = 0;
+    while(scrambled === word && guard < 10){
+      for(let i = letters.length - 1; i > 0; i--){
+        const j = Math.floor(Math.random() * (i + 1));
+        [letters[i], letters[j]] = [letters[j], letters[i]];
+      }
+      scrambled = letters.join('');
+      guard++;
+    }
+    return scrambled;
   }
   function isUsableTranslation(text, originalWord){
     if(!text) return false;
