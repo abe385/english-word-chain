@@ -48,13 +48,13 @@
   .iconBtn.active{ border-color:var(--gold); color:var(--gold); }
   .header .eyebrow{ letter-spacing:0.3em; font-size:11px; color:var(--indigo-lt); font-weight:700; }
   .header h1{ font-family:'Shippori Mincho', serif; font-size:25px; font-weight:800; margin:4px 0 2px; color:var(--paper); }
-  .header .sub{ font-size:12px; color:#c3cbe3; }
+  .header .sub{ font-size:15px; color:#ffffff; }
   .header::after{ content:""; display:block; width:64px;height:2px; background:var(--gold); margin:10px auto 0; opacity:0.7; }
 
   .status{ display:flex; justify-content:space-between; gap:8px; }
   .status .box{ flex:1; background:var(--ink-2); border:1px solid #2c3145; border-radius:10px; padding:8px 6px; text-align:center; }
-  .status .box .label{ font-size:10px; color:#b0b8d2; letter-spacing:0.08em; }
-  .status .box .value{ font-family:'Shippori Mincho', serif; font-size:19px; font-weight:700; color:var(--gold); margin-top:2px; }
+  .status .box .label{ font-size:13px; color:#ffffff; letter-spacing:0.06em; font-weight:600; }
+  .status .box .value{ font-family:'Shippori Mincho', serif; font-size:24px; font-weight:700; color:var(--gold); margin-top:4px; }
   .status .box.timer .value{color:var(--paper);}
   .status .box.timer.warn .value{color:var(--danger);}
 
@@ -76,8 +76,8 @@
   .chainArea::-webkit-scrollbar-thumb{background:#3a405c;border-radius:4px;}
   .chain{ display:flex; flex-wrap:wrap; gap:6px 6px; align-items:center; }
   .chip{ background:var(--ink-2); border:1px solid #37405e; color:var(--paper); padding:5px 10px; border-radius:999px; font-size:13px; font-weight:500; }
-  .arrow{color:#8891b8; font-size:12px;}
-  .chainArea .empty{ color:#9aa2c8; font-size:13px; padding:6px 2px; }
+  .arrow{color:#ffffff; font-size:12px;}
+  .chainArea .empty{ color:#ffffff; font-size:16px; padding:6px 2px; }
 
   .inputRow{ display:flex; gap:8px; }
   .inputRow input{
@@ -85,7 +85,7 @@
     border-radius:10px; padding:13px 14px; font-size:17px; outline:none; transition:border-color 150ms ease;
   }
   .inputRow input:focus{ border-color:var(--gold); }
-  .inputRow input::placeholder{color:#8a93b3;}
+  .inputRow input::placeholder{color:#e8eaf5;}
   .inputRow button{
     border:none; border-radius:10px; padding:0 16px; font-size:14px; font-weight:700; cursor:pointer;
     font-family:'Zen Kaku Gothic New', sans-serif; transition:background 150ms ease, transform 100ms ease;
@@ -110,13 +110,13 @@
     background:rgba(47,143,107,0.08); border:1px solid #2c3145; border-radius:12px; padding:10px 12px 12px;
   }
   .dictLabel{ font-size:12.5px; font-weight:700; color:var(--accent); margin-bottom:2px; }
-  .dictNote{ font-size:11px; color:#b0b8d2; line-height:1.5; margin-bottom:8px; }
+  .dictNote{ font-size:14px; color:#ffffff; line-height:1.6; margin-bottom:8px; }
   #lookupBtn{ background:var(--accent); color:#fff; white-space:nowrap; }
   #lookupBtn:hover{ background:var(--accent-dark); }
 
   .feedback{ min-height:34px; font-size:14px; text-align:center; color:var(--danger); font-weight:700; line-height:1.5; }
   .feedback.ok{color:#4fc98a;}
-  .hint{ text-align:center; font-size:11px; color:#9aa2c0; line-height:1.6; }
+  .hint{ text-align:center; font-size:14px; color:#ffffff; line-height:1.6; font-weight:500; }
 
   .suggestBox{
     background:var(--ink-2); border:1px solid var(--gold); border-radius:10px; padding:10px 12px; font-size:13px;
@@ -130,7 +130,7 @@
   .suggestBox .wordRow .w{
     background:#2a2f42; border-radius:999px; padding:3px 10px; font-weight:700; color:var(--gold); flex-shrink:0;
   }
-  .suggestBox .wordRow .m{ font-size:12.5px; color:#dbe1f4; line-height:1.5; flex:1; min-width:120px; }
+  .suggestBox .wordRow .m{ font-size:12.5px; color:#ffffff; line-height:1.5; flex:1; min-width:120px; }
   #finishRoundBtn{
     margin-top:12px; width:100%; background:var(--accent); color:#fff; border:none;
     border-radius:10px; padding:12px; font-weight:700; font-size:14px; cursor:pointer;
