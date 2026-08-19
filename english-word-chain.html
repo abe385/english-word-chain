@@ -1484,18 +1484,21 @@
   // katakana result "読み方:" (reading) or show it as a normal meaning.
   function isLikelyPhoneticEcho(katakanaText, englishWord){
     const romaji = katakanaToRoughRomaji(katakanaText.replace(/[^\u30A0-\u30FF]/g, ''));
-    const target = englishWord.toLowerCase().replace(/[^a-z]/g, '');
-    if(!romaji || !target) return false;
-    // A phonetic echo of the SAME word almost always starts with the same
-    // sound (transliteration preserves the onset), so require that plus a
-    // reasonable overall overlap — this is more reliable than an overlap
-    // ratio alone, since English spelling and romaji don't align character-
-    // for-character even for a straightforward transliteration.
-    const prefixLen = Math.min(2, target.length, romaji.length);
-    const prefixMatch = target.slice(0, prefixLen) === romaji.slice(0, prefixLen);
-    const shared = lcsLength(romaji, target);
-    const ratio = shared / Math.max(romaji.length, target.length);
-    return prefixMatch && ratio >= 0.3;
+    const rawTarget = englishWord.toLowerCase().replace(/[^a-z]/g, '');
+    if(!romaji || !rawTarget) return false;
+    // English "vowel+r" (bird→バード, girl→ガール, kirk→カーク, first→ファースト)
+    // commonly becomes a long "ア" sound in Japanese, not a literal transliteration
+    // of the vowel letter — so also try a version with ir/er/ur/ar/or normalized
+    // to "a" before comparing, and accept a match against either version.
+    const altTarget = rawTarget.replace(/[iueoa]r/g, 'a');
+    const check = (target) => {
+      const prefixLen = Math.min(2, target.length, romaji.length);
+      const prefixMatch = target.slice(0, prefixLen) === romaji.slice(0, prefixLen);
+      const shared = lcsLength(romaji, target);
+      const ratio = shared / Math.max(romaji.length, target.length);
+      return prefixMatch && ratio >= 0.3;
+    };
+    return check(rawTarget) || (altTarget !== rawTarget && check(altTarget));
   }
   // Shuffles a word's letters for anagram mode. Retries if the shuffle happens
   // to land back on the original word (possible for short/repetitive words).
