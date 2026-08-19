@@ -1436,22 +1436,27 @@
     return true;
   }
 
-  async function fetchJapaneseMeaningViaDeepL(word){
+  // Single call to our Cloudflare Worker, which now tries DeepL and (unless
+  // deeplOnly is requested) falls back to MyMemory ON THE SERVER SIDE. Doing
+  // the MyMemory fallback server-to-server (instead of a separate direct
+  // browser→MyMemory call) avoids MyMemory's occasionally inconsistent CORS
+  // headers, which were causing random "translation not found" failures.
+  async function fetchViaProxy(word, deeplOnly){
     if(!DEEPL_PROXY_URL) return null;
     try{
       const headers = APP_SHARED_KEY ? { 'X-App-Key': APP_SHARED_KEY } : {};
-      const res = await fetchWithTimeout(`${DEEPL_PROXY_URL}?word=${encodeURIComponent(word)}`, 4000, { headers });
-      if(!res.ok) throw new Error('proxy failed');
+      const qs = `word=${encodeURIComponent(word)}${deeplOnly ? '&deeplOnly=1' : ''}`;
+      const res = await fetchWithTimeout(`${DEEPL_PROXY_URL}?${qs}`, 7000, { headers });
+      if(!res.ok) return null;
       const data = await res.json();
       const translated = data && data.translated ? data.translated : null;
-      // DeepL sometimes leaves ambiguous single words untranslated (e.g. treating
-      // "apple" as the brand name). If unusable, let the caller fall back to MyMemory.
       return isUsableTranslation(translated, word) ? translated : null;
     }catch(err){
-      return null; // falls through to MyMemory below
+      return null;
     }
   }
-
+  // Kept as a DIRECT fallback for the rare case the Worker itself is unreachable
+  // (not used as the everyday path anymore — see fetchViaProxy above).
   async function fetchJapaneseMeaningViaMyMemory(word){
     try{
       const res = await fetchWithTimeout(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(word)}&langpair=en|ja`, 4000);
@@ -1467,12 +1472,16 @@
       return null;
     }
   }
-
-  // Tries the higher-quality DeepL proxy first (if configured via DEEPL_PROXY_URL),
-  // and falls back to the free MyMemory API so the game keeps working either way.
+  // DeepL-only variant for reverse/anagram mode, where a wrong MyMemory match
+  // for an uncommon word is worse than showing no hint at all.
+  async function fetchJapaneseMeaningViaDeepL(word){
+    return fetchViaProxy(word, true);
+  }
+  // General-purpose lookup (proxy handles DeepL + MyMemory fallback server-side;
+  // if the Worker itself is unreachable, try MyMemory directly as a last resort).
   async function fetchJapaneseMeaning(word){
-    const viaDeepL = await fetchJapaneseMeaningViaDeepL(word);
-    if(viaDeepL) return viaDeepL;
+    const viaProxy = await fetchViaProxy(word, false);
+    if(viaProxy) return viaProxy;
     return fetchJapaneseMeaningViaMyMemory(word);
   }
 
@@ -1516,18 +1525,13 @@
   // translation (which is slower, since it's a second sequential API call) is
   // reserved for the untimed 📖 dictionary lookup panel instead — see lookupWord().
   async function fetchCombinedMeaning(word){
-    // Reject pure-katakana "translations" here too (same issue as reverse mode:
-    // a loanword reading like "kayak"→"カヤック" isn't a useful meaning on its
-    // own in this quick reveal). Try the other translation source before giving
-    // up, and fall back to a short English definition if neither gives a real
-    // Japanese meaning, so the reveal still teaches something instead of just
-    // spelling out the word's sound in katakana.
-    let ja = await fetchJapaneseMeaningViaDeepL(word);
+    // Reject pure-katakana "translations" (same issue as before: a loanword
+    // reading like "kayak"→"カヤック" isn't a useful meaning on its own in this
+    // quick reveal). The Worker already tried DeepL then MyMemory server-side,
+    // so if what we got back is just a katakana reading, fall straight to a
+    // short English definition instead, so the reveal still teaches something.
+    let ja = await fetchViaProxy(word, false);
     if(ja && isPureKatakana(ja)) ja = null;
-    if(!ja){
-      const viaMyMemory = await fetchJapaneseMeaningViaMyMemory(word);
-      if(viaMyMemory && !isPureKatakana(viaMyMemory)) ja = viaMyMemory;
-    }
     if(ja) return `🇯🇵 ${ja}`;
     const def = await fetchEnglishDefinition(word);
     if(def) return `🇬🇧 ${def.text}`;
