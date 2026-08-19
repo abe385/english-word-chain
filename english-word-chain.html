@@ -1066,14 +1066,19 @@
         ${finishBtnHtml}
       </div>`;
     if(!rawText){
+      // Stagger the 5 lookups slightly instead of firing them all in the same
+      // instant — a burst of simultaneous requests to these free APIs seems to
+      // trigger more failures than the same requests spread out by a beat.
       suggestions.forEach((w, i) => {
-        fetchCombinedMeaning(w).then(meaning=>{
-          const el = document.getElementById(`sugMeaning${i}`);
-          if(!el) return; // box may already be gone
-          el.innerHTML = meaning
-            ? meaning.split('\n').map(line => escapeHtml(line)).join('<br>')
-            : '意味は見つかりませんでした(通信エラーの可能性があります)';
-        });
+        setTimeout(()=>{
+          fetchCombinedMeaning(w).then(meaning=>{
+            const el = document.getElementById(`sugMeaning${i}`);
+            if(!el) return; // box may already be gone
+            el.innerHTML = meaning
+              ? meaning.split('\n').map(line => escapeHtml(line)).join('<br>')
+              : '意味は見つかりませんでした(通信エラーの可能性があります)';
+          });
+        }, i * 250);
       });
     }
     if(onFinish){
@@ -1380,19 +1385,26 @@
   }
 
   async function fetchEnglishDefinition(word){
-    try{
-      const res = await fetchWithTimeout(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`, 6000);
-      if(!res.ok) throw new Error('not found');
-      const data = await res.json();
-      const entry = data[0];
-      const meaning = (entry.meanings || [])[0];
-      const def = meaning && meaning.definitions && meaning.definitions[0];
-      if(!def) return null;
-      const pos = meaning.partOfSpeech ? `(${meaning.partOfSpeech}) ` : '';
-      return { pos: meaning.partOfSpeech || '', text: `${pos}${def.definition}`, example: def.example || null };
-    }catch(err){
-      return null;
+    // This free API's own maintainers note it gets heavily loaded under traffic
+    // spikes, so a single failed attempt doesn't necessarily mean "no data" —
+    // retry once after a short pause before giving up.
+    for(let attempt = 0; attempt < 2; attempt++){
+      try{
+        const res = await fetchWithTimeout(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`, 7000);
+        if(res.status === 404) return null; // definitively not a word — no point retrying
+        if(!res.ok) throw new Error('not found');
+        const data = await res.json();
+        const entry = data[0];
+        const meaning = (entry.meanings || [])[0];
+        const def = meaning && meaning.definitions && meaning.definitions[0];
+        if(!def) return null;
+        const pos = meaning.partOfSpeech ? `(${meaning.partOfSpeech}) ` : '';
+        return { pos: meaning.partOfSpeech || '', text: `${pos}${def.definition}`, example: def.example || null };
+      }catch(err){
+        if(attempt === 0) await new Promise(r => setTimeout(r, 400));
+      }
     }
+    return null;
   }
 
   // A "translation" is only useful if it actually contains Japanese script
