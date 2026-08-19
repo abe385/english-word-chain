@@ -923,10 +923,11 @@
         // hint (falls through to the structural length/letter hint below) is far
         // less harmful than showing an incorrect meaning.
         hint = await fetchJapaneseMeaningViaDeepL(candidate);
-        // Reject pure-katakana "translations" (loanword transliterations like
-        // "shooter"→"シューター") — they just spell out the sound, not the
-        // meaning, so they're not a useful clue on their own. Try another word.
-        if(hint && isPureKatakana(hint)) hint = null;
+        // Reject katakana results that just spell out THIS word's own sound
+        // (e.g. "shooter"→"シューター") — that would give the answer away
+        // outright. A genuine katakana loanword meaning something else (e.g.
+        // "kickback"→"リベート") is a fair hint and is kept.
+        if(hint && isPureKatakana(hint) && isLikelyPhoneticEcho(hint, candidate)) hint = null;
       }
       if(!target){ target = ALL_WORDS_ARR[Math.floor(Math.random()*ALL_WORDS_ARR.length)]; }
       state.reverseTarget = target;
@@ -953,7 +954,7 @@
         if(!def) continue;
         target = candidate;
         hint = await fetchJapaneseMeaningViaDeepL(candidate);
-        if(hint && isPureKatakana(hint)) hint = null;
+        if(hint && isPureKatakana(hint) && isLikelyPhoneticEcho(hint, candidate)) hint = null;
       }
       if(!target){
         const fallbackPool = ALL_WORDS_ARR.filter(w => w.length >= 4);
@@ -1414,14 +1415,87 @@
     return /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/.test(text);
   }
   // True if the text is ENTIRELY katakana (plus spaces/punctuation) with no
-  // hiragana or kanji at all — this usually means the "translation" is just a
-  // phonetic loanword rendering (e.g. "shooter" → "シューター") rather than an
-  // actual explanation of meaning. Fine as a bonus detail in the 5-example
-  // suggestion box, but useless (circular) as the ONLY clue in reverse mode.
+  // hiragana or kanji at all. This alone doesn't tell us whether it's a real
+  // loanword meaning (e.g. "kickback"→"リベート") or just the word's sound
+  // spelled out (e.g. "shooter"→"シューター") — see isLikelyPhoneticEcho below
+  // for that distinction.
   function isPureKatakana(text){
     const stripped = text.replace(/[\s・、。]/g, '');
     if(!stripped) return false;
     return /^[\u30A0-\u30FF]+$/.test(stripped);
+  }
+  // Rough katakana → romaji table (digraphs first, so e.g. "シュ" becomes
+  // "shu" as one unit rather than "shi"+"u"). Good enough for a similarity
+  // check — doesn't need to be phonetically perfect.
+  const KATAKANA_ROMAJI_DIGRAPHS = {
+    'キャ':'kya','キュ':'kyu','キョ':'kyo','ギャ':'gya','ギュ':'gyu','ギョ':'gyo',
+    'シャ':'sha','シュ':'shu','ショ':'sho','ジャ':'ja','ジュ':'ju','ジョ':'jo',
+    'チャ':'cha','チュ':'chu','チョ':'cho','ニャ':'nya','ニュ':'nyu','ニョ':'nyo',
+    'ヒャ':'hya','ヒュ':'hyu','ヒョ':'hyo','ビャ':'bya','ビュ':'byu','ビョ':'byo',
+    'ピャ':'pya','ピュ':'pyu','ピョ':'pyo','ミャ':'mya','ミュ':'myu','ミョ':'myo',
+    'リャ':'rya','リュ':'ryu','リョ':'ryo','ファ':'fa','フィ':'fi','フェ':'fe','フォ':'fo',
+    'ティ':'ti','ディ':'di','トゥ':'tu','ドゥ':'du','ウィ':'wi','ウェ':'we','ウォ':'wo',
+    'ヴァ':'va','ヴィ':'vi','ヴェ':'ve','ヴォ':'vo','ジェ':'je','チェ':'che','シェ':'she',
+  };
+  const KATAKANA_ROMAJI = {
+    'ア':'a','イ':'i','ウ':'u','エ':'e','オ':'o',
+    'カ':'ka','キ':'ki','ク':'ku','ケ':'ke','コ':'ko',
+    'ガ':'ga','ギ':'gi','グ':'gu','ゲ':'ge','ゴ':'go',
+    'サ':'sa','シ':'shi','ス':'su','セ':'se','ソ':'so',
+    'ザ':'za','ジ':'ji','ズ':'zu','ゼ':'ze','ゾ':'zo',
+    'タ':'ta','チ':'chi','ツ':'tsu','テ':'te','ト':'to',
+    'ダ':'da','ヂ':'ji','ヅ':'zu','デ':'de','ド':'do',
+    'ナ':'na','ニ':'ni','ヌ':'nu','ネ':'ne','ノ':'no',
+    'ハ':'ha','ヒ':'hi','フ':'fu','ヘ':'he','ホ':'ho',
+    'バ':'ba','ビ':'bi','ブ':'bu','ベ':'be','ボ':'bo',
+    'パ':'pa','ピ':'pi','プ':'pu','ペ':'pe','ポ':'po',
+    'マ':'ma','ミ':'mi','ム':'mu','メ':'me','モ':'mo',
+    'ヤ':'ya','ユ':'yu','ヨ':'yo',
+    'ラ':'ra','リ':'ri','ル':'ru','レ':'re','ロ':'ro',
+    'ワ':'wa','ヲ':'o','ン':'n','ヴ':'vu',
+    'ッ':'','ー':'','ィ':'i','ェ':'e','ォ':'o','ァ':'a','ゥ':'u',
+  };
+  function katakanaToRoughRomaji(str){
+    let out = '';
+    for(let i = 0; i < str.length; i++){
+      const two = str.slice(i, i+2);
+      if(KATAKANA_ROMAJI_DIGRAPHS[two]){ out += KATAKANA_ROMAJI_DIGRAPHS[two]; i++; continue; }
+      const one = str[i];
+      if(KATAKANA_ROMAJI[one] !== undefined) out += KATAKANA_ROMAJI[one];
+    }
+    return out;
+  }
+  // Longest-common-subsequence length, used as a tolerant similarity measure
+  // (robust to the odd inserted/dropped letter, unlike position-by-position
+  // comparison).
+  function lcsLength(a, b){
+    const dp = Array(a.length+1).fill(null).map(()=>Array(b.length+1).fill(0));
+    for(let i=1;i<=a.length;i++){
+      for(let j=1;j<=b.length;j++){
+        dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1]+1 : Math.max(dp[i-1][j], dp[i][j-1]);
+      }
+    }
+    return dp[a.length][b.length];
+  }
+  // True if a katakana translation is most likely just the SOURCE WORD's sound
+  // spelled out (e.g. "shooter"→"シューター", "kulak"→"クラーク") rather than a
+  // genuine loanword with its own meaning (e.g. "kickback"→"リベート", which
+  // sounds nothing like "kickback"). Used to decide whether to label a
+  // katakana result "読み方:" (reading) or show it as a normal meaning.
+  function isLikelyPhoneticEcho(katakanaText, englishWord){
+    const romaji = katakanaToRoughRomaji(katakanaText.replace(/[^\u30A0-\u30FF]/g, ''));
+    const target = englishWord.toLowerCase().replace(/[^a-z]/g, '');
+    if(!romaji || !target) return false;
+    // A phonetic echo of the SAME word almost always starts with the same
+    // sound (transliteration preserves the onset), so require that plus a
+    // reasonable overall overlap — this is more reliable than an overlap
+    // ratio alone, since English spelling and romaji don't align character-
+    // for-character even for a straightforward transliteration.
+    const prefixLen = Math.min(2, target.length, romaji.length);
+    const prefixMatch = target.slice(0, prefixLen) === romaji.slice(0, prefixLen);
+    const shared = lcsLength(romaji, target);
+    const ratio = shared / Math.max(romaji.length, target.length);
+    return prefixMatch && ratio >= 0.3;
   }
   // Shuffles a word's letters for anagram mode. Retries if the shuffle happens
   // to land back on the original word (possible for short/repetitive words).
@@ -1461,8 +1535,15 @@
       const res = await fetchWithTimeout(`${DEEPL_PROXY_URL}?${qs}`, 7000, { headers });
       if(!res.ok) return null;
       const data = await res.json();
-      const translated = data && data.translated ? data.translated : null;
-      return isUsableTranslation(translated, word) ? translated : null;
+      // The Worker now tries DeepL and MyMemory in parallel and returns both.
+      // A genuine Japanese MEANING always wins over a candidate that's just
+      // the word's own sound spelled out in katakana — even if that "echo"
+      // candidate came from the normally-preferred source (DeepL).
+      const candidates = [data && data.deeplText, data && data.myMemoryText]
+        .filter(t => isUsableTranslation(t, word));
+      if(candidates.length === 0) return null;
+      const realMeaning = candidates.find(t => !(isPureKatakana(t) && isLikelyPhoneticEcho(t, word)));
+      return realMeaning || candidates[0];
     }catch(err){
       return null;
     }
@@ -1537,12 +1618,17 @@
   // translation (which is slower, since it's a second sequential API call) is
   // reserved for the untimed 📖 dictionary lookup panel instead — see lookupWord().
   async function fetchCombinedMeaning(word){
-    // Prefer a genuine Japanese meaning. If all we got back is a pure-katakana
-    // loanword reading (e.g. "kayak"→"カヤック"), still show it — but clearly
-    // labeled as a reading, not presented as if it were a meaning.
+    // Prefer a genuine Japanese meaning. If what we got back is just the
+    // word's own sound spelled out in katakana (e.g. "kulak"→"クラーク"),
+    // label it as a reading rather than a meaning. But a katakana LOANWORD
+    // that actually differs from the source word's sound (e.g.
+    // "kickback"→"リベート") is a genuine meaning, so show it normally.
     const ja = await fetchViaProxy(word, false);
     if(!ja) return null;
-    return isPureKatakana(ja) ? `🇯🇵 読み方: ${ja}` : `🇯🇵 ${ja}`;
+    if(isPureKatakana(ja) && isLikelyPhoneticEcho(ja, word)){
+      return `🇯🇵 読み方: ${ja}`;
+    }
+    return `🇯🇵 ${ja}`;
   }
 
   async function lookupWord(word){
