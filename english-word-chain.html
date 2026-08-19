@@ -1537,13 +1537,12 @@
   // translation (which is slower, since it's a second sequential API call) is
   // reserved for the untimed 📖 dictionary lookup panel instead — see lookupWord().
   async function fetchCombinedMeaning(word){
-    // Reject pure-katakana "translations" (a loanword reading like
-    // "kayak"→"カヤック" isn't a useful meaning on its own). The Worker already
-    // tried DeepL then MyMemory server-side. Only show a genuine Japanese
-    // meaning here — no English fallback, so the reveal never mixes languages.
-    let ja = await fetchViaProxy(word, false);
-    if(ja && isPureKatakana(ja)) ja = null;
-    return ja ? `🇯🇵 ${ja}` : null;
+    // Prefer a genuine Japanese meaning. If all we got back is a pure-katakana
+    // loanword reading (e.g. "kayak"→"カヤック"), still show it — but clearly
+    // labeled as a reading, not presented as if it were a meaning.
+    const ja = await fetchViaProxy(word, false);
+    if(!ja) return null;
+    return isPureKatakana(ja) ? `🇯🇵 読み方: ${ja}` : `🇯🇵 ${ja}`;
   }
 
   async function lookupWord(word){
