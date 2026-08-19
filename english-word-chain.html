@@ -1076,7 +1076,7 @@
             if(!el) return; // box may already be gone
             el.innerHTML = meaning
               ? meaning.split('\n').map(line => escapeHtml(line)).join('<br>')
-              : '意味は見つかりませんでした(通信エラーの可能性があります)';
+              : '日本語訳は見つかりませんでした';
           });
         }, i * 250);
       });
@@ -1537,17 +1537,13 @@
   // translation (which is slower, since it's a second sequential API call) is
   // reserved for the untimed 📖 dictionary lookup panel instead — see lookupWord().
   async function fetchCombinedMeaning(word){
-    // Reject pure-katakana "translations" (same issue as before: a loanword
-    // reading like "kayak"→"カヤック" isn't a useful meaning on its own in this
-    // quick reveal). The Worker already tried DeepL then MyMemory server-side,
-    // so if what we got back is just a katakana reading, fall straight to a
-    // short English definition instead, so the reveal still teaches something.
+    // Reject pure-katakana "translations" (a loanword reading like
+    // "kayak"→"カヤック" isn't a useful meaning on its own). The Worker already
+    // tried DeepL then MyMemory server-side. Only show a genuine Japanese
+    // meaning here — no English fallback, so the reveal never mixes languages.
     let ja = await fetchViaProxy(word, false);
     if(ja && isPureKatakana(ja)) ja = null;
-    if(ja) return `🇯🇵 ${ja}`;
-    const def = await fetchEnglishDefinition(word);
-    if(def) return `🇬🇧 ${def.text}`;
-    return null;
+    return ja ? `🇯🇵 ${ja}` : null;
   }
 
   async function lookupWord(word){
