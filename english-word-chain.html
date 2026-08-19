@@ -1486,11 +1486,20 @@
     const romaji = katakanaToRoughRomaji(katakanaText.replace(/[^\u30A0-\u30FF]/g, ''));
     const rawTarget = englishWord.toLowerCase().replace(/[^a-z]/g, '');
     if(!romaji || !rawTarget) return false;
-    // English "vowel+r" (bird→バード, girl→ガール, kirk→カーク, first→ファースト)
-    // commonly becomes a long "ア" sound in Japanese, not a literal transliteration
-    // of the vowel letter — so also try a version with ir/er/ur/ar/or normalized
-    // to "a" before comparing, and accept a match against either version.
-    const altTarget = rawTarget.replace(/[iueoa]r/g, 'a');
+    // English spelling doesn't map letter-for-letter onto how it's actually
+    // pronounced/transliterated. Try a few common vowel-sound normalizations
+    // and accept a match against ANY of them:
+    //  - vowel+r (bird→バード, kirk→カーク, first→ファースト) → long "ア"
+    //  - "oo"    (kook→クーク, school→スクール, food→フード)   → long "ウ"
+    //  - "ee"    (see→シー, tree→ツリー, free→フリー)          → long "イ"
+    //  - silent "k"/"w" (knock→ノック, knife→ナイフ, write→ライト)
+    const variants = [
+      rawTarget,
+      rawTarget.replace(/[iueoa]r/g, 'a'),
+      rawTarget.replace(/oo/g, 'u'),
+      rawTarget.replace(/ee/g, 'i'),
+      rawTarget.replace(/^kn/, 'n').replace(/^wr/, 'r'),
+    ];
     const check = (target) => {
       const prefixLen = Math.min(2, target.length, romaji.length);
       const prefixMatch = target.slice(0, prefixLen) === romaji.slice(0, prefixLen);
@@ -1498,7 +1507,7 @@
       const ratio = shared / Math.max(romaji.length, target.length);
       return prefixMatch && ratio >= 0.3;
     };
-    return check(rawTarget) || (altTarget !== rawTarget && check(altTarget));
+    return variants.some(check);
   }
   // Shuffles a word's letters for anagram mode. Retries if the shuffle happens
   // to land back on the original word (possible for short/repetitive words).
@@ -1538,10 +1547,16 @@
       const res = await fetchWithTimeout(`${DEEPL_PROXY_URL}?${qs}`, 7000, { headers });
       if(!res.ok) return null;
       const data = await res.json();
-      // The Worker now tries DeepL and MyMemory in parallel and returns both.
-      // A genuine Japanese MEANING always wins over a candidate that's just
-      // the word's own sound spelled out in katakana — even if that "echo"
-      // candidate came from the normally-preferred source (DeepL).
+      // JMdict (a real, human-edited dictionary) wins outright when available —
+      // it's already a proper meaning, not a machine-translation guess, so no
+      // need to run it through the phonetic-echo check at all.
+      if(data && data.jmdictText && isUsableTranslation(data.jmdictText, word)){
+        return data.jmdictText;
+      }
+      // Otherwise: the Worker tried DeepL and MyMemory in parallel and returns
+      // both. A genuine Japanese MEANING always wins over a candidate that's
+      // just the word's own sound spelled out in katakana — even if that
+      // "echo" candidate came from the normally-preferred source (DeepL).
       const candidates = [data && data.deeplText, data && data.myMemoryText]
         .filter(t => isUsableTranslation(t, word));
       if(candidates.length === 0) return null;
