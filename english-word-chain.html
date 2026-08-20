@@ -812,7 +812,8 @@
     seconds: 20,
     timeLeft: 20,
     battleTimerHandle: null,
-    lastResult: null, // { winner, answer, meaning }
+    lastResult: null, // { winner } — the actual answer isn't shown until the game-end summary
+    history: [], // { round, prompt, answer, meaning, winner } for all rounds, shown together at game end
     ranking: null,
     hasAnswered: false,
     joinError: null,
@@ -1540,7 +1541,12 @@
       if(battleState.battleTimerHandle) clearInterval(battleState.battleTimerHandle);
       battleState.battleTimerHandle = setInterval(()=>{
         battleState.timeLeft = Math.max(0, battleState.timeLeft - 1);
-        renderBattleScreen();
+        // Only touch the timer text, not the whole card — a full re-render
+        // every second would wipe out whatever the player is mid-typing in
+        // the answer box (it recreates the <input> from scratch).
+        const timeEl = document.getElementById('battleTimeLeft');
+        if(timeEl) timeEl.textContent = battleState.timeLeft;
+        else renderBattleScreen(); // fallback if the element isn't there yet
       }, 1000);
     } else if(msg.type === 'wrong'){
       battleState.wrongFlash = true;
@@ -1550,12 +1556,13 @@
     } else if(msg.type === 'roundResult'){
       if(battleState.battleTimerHandle){ clearInterval(battleState.battleTimerHandle); battleState.battleTimerHandle = null; }
       battleState.screen = 'roundResult';
-      battleState.lastResult = { winner: msg.winner, answer: msg.answer, meaning: msg.meaning };
+      battleState.lastResult = { winner: msg.winner };
       battleState.players = msg.players || battleState.players;
     } else if(msg.type === 'gameOver'){
       if(battleState.battleTimerHandle){ clearInterval(battleState.battleTimerHandle); battleState.battleTimerHandle = null; }
       battleState.screen = 'gameOver';
       battleState.ranking = msg.ranking || [];
+      battleState.history = msg.history || [];
     }
     renderBattleScreen();
   }
@@ -1635,7 +1642,7 @@
       const scoreRows = [...s.players].sort((a,b)=>b.score-a.score).map(p => `<div class="wordRow"><span class="w" style="color:var(--text-ink); background:var(--paper-dim);">${escapeBattleHtml(p.name)}</span><span class="m" style="color:var(--text-ink);">${p.score}点</span></div>`).join('');
       html = `
         <h2>ラウンド ${s.round} / ${s.totalRounds}</h2>
-        <div style="font-size:24px; font-weight:700; color:var(--gold); margin-bottom:6px;">⏱ 残り${s.timeLeft}秒</div>
+        <div style="font-size:24px; font-weight:700; color:var(--gold); margin-bottom:6px;">⏱ 残り<span id="battleTimeLeft">${s.timeLeft}</span>秒</div>
         ${meaningLine}
         <div style="font-size:${s.mode === 'anagram' ? '28px' : '20px'}; font-weight:700; letter-spacing:${s.mode === 'anagram' ? '4px' : 'normal'}; margin-bottom:16px; background:var(--paper-dim); border-radius:8px; padding:14px;">
           ${escapeBattleHtml(s.mode === 'anagram' ? s.prompt.toUpperCase() : s.prompt)}
@@ -1658,8 +1665,7 @@
       const scoreRows = [...s.players].sort((a,b)=>b.score-a.score).map(p => `<div class="wordRow"><span class="w" style="color:var(--text-ink); background:var(--paper-dim);">${escapeBattleHtml(p.name)}</span><span class="m" style="color:var(--text-ink);">${p.score}点</span></div>`).join('');
       html = `
         <h2>${r.winner ? `🎉 ${escapeBattleHtml(r.winner)} さんの勝ち！` : '⏰ 時間切れ'}</h2>
-        <div style="font-size:20px; font-weight:700; color:var(--gold); margin-bottom:6px;">正解: ${escapeBattleHtml(r.answer)}</div>
-        ${r.meaning ? `<div style="font-size:14px; color:var(--accent-dark); margin-bottom:16px;">🇯🇵 ${escapeBattleHtml(r.meaning)}</div>` : ''}
+        <p style="font-size:13px; color:#3a3728;">正解と意味は、全ラウンド終了後にまとめて発表します。</p>
         <div class="suggestBox">
           <div class="lbl">👥 現在のスコア</div>
           <div class="wordList">${scoreRows}</div>
@@ -1667,12 +1673,24 @@
         <p style="font-size:12px; color:#3a3728; margin-top:10px;">まもなく次の問題が始まります…</p>
       `;
     } else if(s.screen === 'gameOver'){
-      const rows = (s.ranking || []).map((p, i) => `<div class="wordRow"><span class="w" style="color:var(--text-ink); background:var(--paper-dim);">${i+1}位: ${escapeBattleHtml(p.name)}</span><span class="m" style="color:var(--text-ink);">${p.score}点</span></div>`).join('');
+      const rankRows = (s.ranking || []).map((p, i) => `<div class="wordRow"><span class="w" style="color:var(--text-ink); background:var(--paper-dim);">${i+1}位: ${escapeBattleHtml(p.name)}</span><span class="m" style="color:var(--text-ink);">${p.score}点</span></div>`).join('');
+      const historyRows = (s.history || []).map(h => {
+        const meaningPart = h.meaning ? `<br><span style="font-size:12px; color:var(--accent-dark);">🇯🇵 ${escapeBattleHtml(h.meaning)}</span>` : '';
+        const winnerPart = h.winner ? `<br><span style="font-size:12px;">🎉 ${escapeBattleHtml(h.winner)} さんが正解</span>` : `<br><span style="font-size:12px;">⏰ 正解者なし</span>`;
+        return `<div class="wordRow" style="display:block; background:#232842; border-radius:8px; padding:12px 14px;">
+          <b>問題${h.round}: ${escapeBattleHtml(h.prompt)}</b><br>
+          <span style="color:var(--gold); font-weight:700;">答え: ${escapeBattleHtml(h.answer)}</span>${meaningPart}${winnerPart}
+        </div>`;
+      }).join('');
       html = `
         <h2>🏁 対戦終了！</h2>
         <div class="suggestBox" style="margin-bottom:16px;">
           <div class="lbl">🏆 最終順位</div>
-          <div class="wordList">${rows}</div>
+          <div class="wordList">${rankRows}</div>
+        </div>
+        <div class="suggestBox" style="margin-bottom:16px;">
+          <div class="lbl">💡 全問の答えと意味</div>
+          <div class="wordList" style="gap:10px;">${historyRows}</div>
         </div>
         ${battleState.isHost ? `
           <div class="modeBlock">
