@@ -1662,9 +1662,14 @@
       `;
     } else if(s.screen === 'roundResult'){
       const r = s.lastResult || {};
-      const scoreRows = [...s.players].sort((a,b)=>b.score-a.score).map(p => `<div class="wordRow"><span class="w" style="color:var(--text-ink); background:var(--paper-dim);">${escapeBattleHtml(p.name)}</span><span class="m" style="color:var(--text-ink);">${p.score}点</span></div>`).join('');
+      const scoreRows = [...s.players].sort((a,b)=>b.score-a.score).map(p => {
+        const isWinner = r.winner && p.name === r.winner;
+        const plusOne = isWinner ? ` <span style="color:#4fc98a; font-weight:700;">(+1)</span>` : '';
+        return `<div class="wordRow" style="${isWinner ? 'border:2px solid #4fc98a;' : ''}"><span class="w" style="color:var(--text-ink); background:var(--paper-dim);">${escapeBattleHtml(p.name)}</span><span class="m" style="color:var(--text-ink);">${p.score}点${plusOne}</span></div>`;
+      }).join('');
       html = `
         <h2>${r.winner ? `🎉 ${escapeBattleHtml(r.winner)} さんの勝ち！` : '⏰ 時間切れ'}</h2>
+        ${r.winner ? `<p style="font-size:18px; font-weight:700; color:#4fc98a; margin-bottom:10px;">✅ ${escapeBattleHtml(r.winner)} さんに +1ポイント！</p>` : ''}
         <p style="font-size:13px; color:#3a3728;">正解と意味は、全ラウンド終了後にまとめて発表します。</p>
         <div class="suggestBox">
           <div class="lbl">👥 現在のスコア</div>
@@ -1675,11 +1680,11 @@
     } else if(s.screen === 'gameOver'){
       const rankRows = (s.ranking || []).map((p, i) => `<div class="wordRow"><span class="w" style="color:var(--text-ink); background:var(--paper-dim);">${i+1}位: ${escapeBattleHtml(p.name)}</span><span class="m" style="color:var(--text-ink);">${p.score}点</span></div>`).join('');
       const historyRows = (s.history || []).map(h => {
-        const meaningPart = h.meaning ? `<br><span style="font-size:12px; color:var(--accent-dark);">🇯🇵 ${escapeBattleHtml(h.meaning)}</span>` : '';
-        const winnerPart = h.winner ? `<br><span style="font-size:12px;">🎉 ${escapeBattleHtml(h.winner)} さんが正解</span>` : `<br><span style="font-size:12px;">⏰ 正解者なし</span>`;
-        return `<div class="wordRow" style="display:block; background:#232842; border-radius:8px; padding:12px 14px;">
-          <b>問題${h.round}: ${escapeBattleHtml(h.prompt)}</b><br>
-          <span style="color:var(--gold); font-weight:700;">答え: ${escapeBattleHtml(h.answer)}</span>${meaningPart}${winnerPart}
+        const meaningPart = h.meaning ? `<br><span style="font-size:15px; color:var(--accent-dark);">🇯🇵 ${escapeBattleHtml(h.meaning)}</span>` : '';
+        const winnerPart = h.winner ? `<br><span style="font-size:15px;">🎉 ${escapeBattleHtml(h.winner)} さんが正解</span>` : `<br><span style="font-size:15px;">⏰ 正解者なし</span>`;
+        return `<div class="wordRow" style="display:block; background:#232842; border-radius:8px; padding:14px 16px;">
+          <b style="font-size:18px;">問題${h.round}: ${escapeBattleHtml(h.prompt)}</b><br>
+          <span style="color:var(--gold); font-weight:700; font-size:19px;">答え: ${escapeBattleHtml(h.answer)}</span>${meaningPart}${winnerPart}
         </div>`;
       }).join('');
       html = `
