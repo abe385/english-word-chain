@@ -814,6 +814,11 @@
     battleTimerHandle: null,
     lastResult: null, // { winner } — the actual answer isn't shown until the game-end summary
     history: [], // { round, prompt, answer, meaning, winner } for all rounds, shown together at game end
+    // ---- Shiritori battle ----
+    shiritoriChain: [], // [{ word, playerName }]
+    shiritoriRequiredLetter: null,
+    shiritoriRejected: null, // { reason, requiredLetter } — brief inline feedback
+    shiritoriEndReason: null,
     ranking: null,
     hasAnswered: false,
     joinError: null,
@@ -1558,11 +1563,34 @@
       battleState.screen = 'roundResult';
       battleState.lastResult = { winner: msg.winner };
       battleState.players = msg.players || battleState.players;
+    } else if(msg.type === 'shiritoriChain'){
+      battleState.screen = 'shiritori';
+      battleState.shiritoriChain = msg.chain || [];
+      battleState.shiritoriRequiredLetter = msg.requiredLetter || null;
+      battleState.shiritoriMaxWords = msg.maxWords || 10;
+      battleState.players = msg.players || battleState.players;
+      battleState.shiritoriRejected = null;
+      if(msg.timeLimitMs){
+        battleState.shiritoriEndsAt = Date.now() + msg.timeLimitMs;
+        if(battleState.battleTimerHandle) clearInterval(battleState.battleTimerHandle);
+        battleState.battleTimerHandle = setInterval(()=>{
+          const secLeft = Math.max(0, Math.round((battleState.shiritoriEndsAt - Date.now())/1000));
+          const el = document.getElementById('shiritoriTimeLeft');
+          if(el) el.textContent = secLeft;
+        }, 1000);
+      }
+    } else if(msg.type === 'shiritoriRejected'){
+      battleState.shiritoriRejected = { reason: msg.reason, requiredLetter: msg.requiredLetter };
+      renderBattleScreen();
+      setTimeout(()=>{ battleState.shiritoriRejected = null; renderBattleScreen(); }, 1800);
+      return;
     } else if(msg.type === 'gameOver'){
       if(battleState.battleTimerHandle){ clearInterval(battleState.battleTimerHandle); battleState.battleTimerHandle = null; }
       battleState.screen = 'gameOver';
       battleState.ranking = msg.ranking || [];
       battleState.history = msg.history || [];
+      battleState.shiritoriChain = msg.shiritoriChain || battleState.shiritoriChain;
+      battleState.shiritoriEndReason = msg.shiritoriEndReason || null;
     }
     renderBattleScreen();
   }
@@ -1580,9 +1608,24 @@
     renderBattleScreen();
   }
 
+  function sendShiritoriAnswer(text){
+    if(!battleSocket || battleSocket.readyState !== WebSocket.OPEN) return;
+    battleSocket.send(JSON.stringify({ type: 'shiritoriAnswer', text }));
+    // Don't touch battleState here and don't re-render — the input box must
+    // stay exactly as-is so the player can keep typing while waiting to hear
+    // back (accepted, or rejected with a reason).
+  }
+
   function renderBattleScreen(){
     const s = battleState;
     let html = '';
+
+    // Preserve whatever the player is currently typing across a re-render —
+    // shiritori especially can re-render mid-keystroke when ANOTHER player's
+    // word gets accepted and broadcasts a chain update.
+    const preservedInput = document.getElementById('shiritoriAnswerInput');
+    const preservedValue = preservedInput ? preservedInput.value : null;
+    const preservedFocused = preservedInput === document.activeElement;
 
     if(s.screen === 'lobby'){
       html = `
@@ -1631,6 +1674,7 @@
               <button class="modeBtn" data-battle-mode="reverse">🔄逆<br>(和→英クイズ)</button>
               <button class="modeBtn" data-battle-mode="phrase">📝空欄補充<br>(よく使う表現)</button>
               <button class="modeBtn" data-battle-mode="anagram">🔤アナグラム<br>(並び替え)</button>
+              <button class="modeBtn" data-battle-mode="shiritori">🔗しりとり対戦</button>
             </div>
           </div>
           <p style="font-size:12px; color:#3a3728;">モードを選ぶと、すぐに対戦がスタートします。</p>
@@ -1660,6 +1704,35 @@
           <div class="wordList">${scoreRows}</div>
         </div>
       `;
+    } else if(s.screen === 'shiritori'){
+      const chainHtml = s.shiritoriChain.length
+        ? s.shiritoriChain.map((c, i) => `<span style="display:inline-block; background:var(--paper-dim); border-radius:999px; padding:6px 12px; margin:3px; font-weight:700;">${i+1}. ${escapeBattleHtml(c.word)} <span style="font-size:11px; color:#5a5647;">(${escapeBattleHtml(c.playerName)})</span></span>`).join('')
+        : '<span style="color:#5a5647;">まだ単語がありません。最初の単語を入力してみましょう！</span>';
+      const rejectMessages = {
+        cooldown: '⏳ 連続では答えられません。30秒待つか、他の人が先に答えるのを待ちましょう。',
+        invalid: '❌ アルファベットの単語を入力してください。',
+        used: '❌ その単語はすでに使われています。',
+        notInDictionary: '❌ この単語リストには登録されていません。',
+        wrongLetter: `❌ 「${escapeBattleHtml((s.shiritoriRejected && s.shiritoriRejected.requiredLetter) || '')}」から始まる単語を入力してください。`,
+      };
+      const rejectMsg = s.shiritoriRejected ? (rejectMessages[s.shiritoriRejected.reason] || '❌ 不正解です。') : '';
+      const scoreRows = [...s.players].sort((a,b)=>b.score-a.score).map(p => `<div class="wordRow"><span class="w" style="color:var(--text-ink); background:var(--paper-dim);">${escapeBattleHtml(p.name)}</span><span class="m" style="color:var(--text-ink);">${p.score}語</span></div>`).join('');
+      html = `
+        <h2>🔗 しりとり対戦</h2>
+        <div style="font-size:14px; margin-bottom:6px;">⏱ 残り<span id="shiritoriTimeLeft">${Math.max(0, Math.round((s.shiritoriEndsAt - Date.now())/1000))}</span>秒 ／ ${s.shiritoriChain.length}/${s.shiritoriMaxWords || 10}語</div>
+        <div style="background:#232842; border-radius:8px; padding:10px; margin-bottom:10px; text-align:left; max-height:140px; overflow-y:auto;">${chainHtml}</div>
+        ${s.shiritoriRequiredLetter ? `<div style="font-size:16px; font-weight:700; margin-bottom:10px;">次は「<span style="color:var(--gold); font-size:22px;">${escapeBattleHtml(s.shiritoriRequiredLetter.toUpperCase())}</span>」から始まる単語</div>` : '<div style="font-size:14px; margin-bottom:10px;">最初の単語は自由です</div>'}
+        ${rejectMsg ? `<p style="color:var(--danger); font-weight:700; font-size:14px;">${rejectMsg}</p>` : ''}
+        <div style="display:flex; gap:8px; margin-bottom:16px;">
+          <input type="text" id="shiritoriAnswerInput" placeholder="英単語を入力" autocomplete="off"
+            style="flex:1; padding:13px; border-radius:8px; border:1.5px solid var(--paper-dim); font-size:17px;">
+          <button class="primary" id="shiritoriAnswerBtn" style="width:auto; padding:0 20px;">回答</button>
+        </div>
+        <div class="suggestBox">
+          <div class="lbl">👥 獲得単語数</div>
+          <div class="wordList">${scoreRows}</div>
+        </div>
+      `;
     } else if(s.screen === 'roundResult'){
       const r = s.lastResult || {};
       const scoreRows = [...s.players].sort((a,b)=>b.score-a.score).map(p => {
@@ -1684,6 +1757,13 @@
           <span style="font-size:16px; font-weight:700; color:var(--text-ink); flex:1; text-align:left;">${escapeBattleHtml(p.name)}</span>
           <span style="font-size:15px; color:var(--text-ink);">正解ポイント: <b style="font-size:18px; color:var(--accent-dark);">${p.score}</b></span>
         </div>`).join('');
+
+      const isShiritori = !!s.shiritoriEndReason;
+      const shiritoriEndLabel = { maxWords: `🎉 ${s.shiritoriChain.length}語つながりました！`, timeLimit: '⏰ 3分経過で終了しました', stalled: '⏰ しばらく単語が続かなかったため終了しました' }[s.shiritoriEndReason] || '';
+      const shiritoriRows = isShiritori ? (s.shiritoriChain || []).map((c, i) =>
+        `<span style="display:inline-block; background:#232842; color:#fff; border-radius:999px; padding:6px 12px; margin:3px; font-weight:700;">${i+1}. ${escapeBattleHtml(c.word)} <span style="font-size:11px; color:#c9d2e8;">(${escapeBattleHtml(c.playerName)})</span></span>`
+      ).join('') : '';
+
       const historyRows = (s.history || []).map(h => {
         const meaningPart = h.meaning ? `<br><span style="font-size:14px; color:#ffffff;">🇯🇵 ${escapeBattleHtml(h.meaning)}</span>` : '';
         const winnerPart = h.winner ? `<br><span style="font-size:14px; color:#ffffff;">🎉 ${escapeBattleHtml(h.winner)} さんが正解</span>` : `<br><span style="font-size:14px; color:#ffffff;">⏰ 正解者なし</span>`;
@@ -1694,14 +1774,20 @@
       }).join('');
       html = `
         <h2>🏁 対戦終了！</h2>
+        ${isShiritori ? `<p style="font-weight:700;">${shiritoriEndLabel}</p>` : ''}
         <div class="suggestBox" style="margin-bottom:16px;">
           <div class="lbl">🏆 最終順位</div>
           <div class="wordList">${rankRows}</div>
         </div>
+        ${isShiritori ? `
+        <div class="suggestBox" style="margin-bottom:16px;">
+          <div class="lbl">🔗 つながった単語</div>
+          <div style="text-align:left; max-height:220px; overflow-y:auto;">${shiritoriRows || '<span style="color:#5a5647;">単語がつながりませんでした</span>'}</div>
+        </div>` : `
         <div class="suggestBox" style="margin-bottom:16px;">
           <div class="lbl">💡 全問の答えと意味</div>
           <div class="wordList" style="gap:8px; max-height:220px; overflow-y:auto;">${historyRows}</div>
-        </div>
+        </div>`}
         ${battleState.isHost ? `
           <div class="modeBlock">
             <div class="modeLabel">🎚️ もう一度遊ぶ(ホストのみ)</div>
@@ -1709,6 +1795,7 @@
               <button class="modeBtn" data-battle-mode="reverse">🔄逆<br>(和→英クイズ)</button>
               <button class="modeBtn" data-battle-mode="phrase">📝空欄補充<br>(よく使う表現)</button>
               <button class="modeBtn" data-battle-mode="anagram">🔤アナグラム<br>(並び替え)</button>
+              <button class="modeBtn" data-battle-mode="shiritori">🔗しりとり対戦</button>
             </div>
           </div>
         ` : ''}
@@ -1718,6 +1805,18 @@
 
     els.battleCard.innerHTML = html;
     wireBattleScreenEvents();
+
+    // Restore the in-progress shiritori answer, if any.
+    if(preservedValue){
+      const newInput = document.getElementById('shiritoriAnswerInput');
+      if(newInput){
+        newInput.value = preservedValue;
+        if(preservedFocused){
+          newInput.focus();
+          newInput.setSelectionRange(preservedValue.length, preservedValue.length);
+        }
+      }
+    }
   }
 
   function wireBattleScreenEvents(){
@@ -1765,6 +1864,18 @@
       answerBtn.addEventListener('click', submit);
       answerInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') submit(); });
       answerInput.focus();
+    }
+
+    const shiritoriBtn = document.getElementById('shiritoriAnswerBtn');
+    const shiritoriInput = document.getElementById('shiritoriAnswerInput');
+    if(shiritoriBtn && shiritoriInput){
+      const submit = () => {
+        const v = shiritoriInput.value.trim();
+        if(v){ sendShiritoriAnswer(v); shiritoriInput.value = ''; }
+      };
+      shiritoriBtn.addEventListener('click', submit);
+      shiritoriInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') submit(); });
+      shiritoriInput.focus();
     }
   }
 
