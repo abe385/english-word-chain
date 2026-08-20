@@ -1638,7 +1638,7 @@
         <button class="primary" id="battleBackBtn" style="background:#888; margin-top:10px;">退出する</button>
       `;
     } else if(s.screen === 'question'){
-      const meaningLine = s.meaning ? `<div style="font-size:15px; color:var(--accent-dark); font-weight:700; margin-bottom:10px;">🇯🇵 ${escapeBattleHtml(s.meaning)}</div>` : '';
+      const meaningLine = s.meaning ? `<div style="font-size:15px; color:#ffffff; font-weight:700; margin-bottom:10px; background:#232842; border-radius:8px; padding:8px 10px;">🇯🇵 ${escapeBattleHtml(s.meaning)}</div>` : '';
       const scoreRows = [...s.players].sort((a,b)=>b.score-a.score).map(p => `<div class="wordRow"><span class="w" style="color:var(--text-ink); background:var(--paper-dim);">${escapeBattleHtml(p.name)}</span><span class="m" style="color:var(--text-ink);">${p.score}点</span></div>`).join('');
       html = `
         <h2>ラウンド ${s.round} / ${s.totalRounds}</h2>
@@ -1680,7 +1680,7 @@
     } else if(s.screen === 'gameOver'){
       const rankRows = (s.ranking || []).map((p, i) => `<div class="wordRow"><span class="w" style="color:var(--text-ink); background:var(--paper-dim);">${i+1}位: ${escapeBattleHtml(p.name)}</span><span class="m" style="color:var(--text-ink);">${p.score}点</span></div>`).join('');
       const historyRows = (s.history || []).map(h => {
-        const meaningPart = h.meaning ? `<br><span style="font-size:15px; color:var(--accent-dark);">🇯🇵 ${escapeBattleHtml(h.meaning)}</span>` : '';
+        const meaningPart = h.meaning ? `<br><span style="font-size:15px; color:#ffffff;">🇯🇵 ${escapeBattleHtml(h.meaning)}</span>` : '';
         const winnerPart = h.winner ? `<br><span style="font-size:15px;">🎉 ${escapeBattleHtml(h.winner)} さんが正解</span>` : `<br><span style="font-size:15px;">⏰ 正解者なし</span>`;
         return `<div class="wordRow" style="display:block; background:#232842; border-radius:8px; padding:14px 16px;">
           <b style="font-size:18px;">問題${h.round}: ${escapeBattleHtml(h.prompt)}</b><br>
