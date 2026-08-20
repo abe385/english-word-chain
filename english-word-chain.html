@@ -1680,11 +1680,11 @@
     } else if(s.screen === 'gameOver'){
       const rankRows = (s.ranking || []).map((p, i) => `<div class="wordRow"><span class="w" style="color:var(--text-ink); background:var(--paper-dim);">${i+1}位: ${escapeBattleHtml(p.name)}</span><span class="m" style="color:var(--text-ink);">${p.score}点</span></div>`).join('');
       const historyRows = (s.history || []).map(h => {
-        const meaningPart = h.meaning ? `<br><span style="font-size:15px; color:#ffffff;">🇯🇵 ${escapeBattleHtml(h.meaning)}</span>` : '';
-        const winnerPart = h.winner ? `<br><span style="font-size:15px;">🎉 ${escapeBattleHtml(h.winner)} さんが正解</span>` : `<br><span style="font-size:15px;">⏰ 正解者なし</span>`;
-        return `<div class="wordRow" style="display:block; background:#232842; border-radius:8px; padding:14px 16px;">
-          <b style="font-size:18px;">問題${h.round}: ${escapeBattleHtml(h.prompt)}</b><br>
-          <span style="color:var(--gold); font-weight:700; font-size:19px;">答え: ${escapeBattleHtml(h.answer)}</span>${meaningPart}${winnerPart}
+        const meaningPart = h.meaning ? `<br><span style="font-size:14px; color:#ffffff;">🇯🇵 ${escapeBattleHtml(h.meaning)}</span>` : '';
+        const winnerPart = h.winner ? `<br><span style="font-size:14px; color:#ffffff;">🎉 ${escapeBattleHtml(h.winner)} さんが正解</span>` : `<br><span style="font-size:14px; color:#ffffff;">⏰ 正解者なし</span>`;
+        return `<div class="wordRow" style="display:block; background:#232842; border-radius:8px; padding:10px 12px;">
+          <b style="font-size:16px; color:#ffffff;">問題${h.round}: ${escapeBattleHtml(h.prompt)}</b><br>
+          <span style="color:var(--gold); font-weight:700; font-size:17px;">答え: ${escapeBattleHtml(h.answer)}</span>${meaningPart}${winnerPart}
         </div>`;
       }).join('');
       html = `
@@ -1695,7 +1695,7 @@
         </div>
         <div class="suggestBox" style="margin-bottom:16px;">
           <div class="lbl">💡 全問の答えと意味</div>
-          <div class="wordList" style="gap:10px;">${historyRows}</div>
+          <div class="wordList" style="gap:8px; max-height:220px; overflow-y:auto;">${historyRows}</div>
         </div>
         ${battleState.isHost ? `
           <div class="modeBlock">
