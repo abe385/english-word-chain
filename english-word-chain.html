@@ -274,6 +274,7 @@
       <div class="modeNote" id="modeNote">すべての単語が使えます。</div>
     </div>
     <button class="primary" id="startBtn">はじめる</button>
+    <button class="primary" id="battleEntryBtn" style="background:var(--indigo); margin-top:10px;">🏆 オンライン対戦</button>
     <details class="rulesDetails">
       <summary>📖 くわしい遊び方・ルールを見る</summary>
       <p>
@@ -287,6 +288,12 @@
       <b>このテスト版では10問まで挑戦できます。</b>ぜひ最後まで遊んでみて、感想を聞かせてください！
       </p>
     </details>
+  </div>
+</div>
+
+<div class="overlay" id="battleOverlay" style="display:none;">
+  <div class="card" id="battleCard">
+    <!-- Content is swapped dynamically by renderBattleScreen() in the script below -->
   </div>
 </div>
 
@@ -787,6 +794,30 @@
   // an APP_KEY secret on the Worker yet.
   const APP_SHARED_KEY = '2a9208af6c7c45b36a775ab8d2be09e27c4a7e2d447d5297';
 
+  // ---- Battle mode (online multiplayer) ----
+  // Derived from DEEPL_PROXY_URL: same Worker, wss:// instead of https://.
+  const BATTLE_WS_BASE = DEEPL_PROXY_URL.replace(/^https:/, 'wss:').replace(/^http:/, 'ws:');
+  let battleSocket = null;
+  let battleState = {
+    screen: 'lobby', // lobby | create | join | waiting | question | roundResult | gameOver
+    roomCode: null,
+    playerName: '',
+    isHost: false,
+    players: [],
+    mode: null,
+    round: 0,
+    totalRounds: 5,
+    prompt: null,
+    meaning: null,
+    seconds: 20,
+    timeLeft: 20,
+    battleTimerHandle: null,
+    lastResult: null, // { winner, answer, meaning }
+    ranking: null,
+    hasAnswered: false,
+    joinError: null,
+  };
+
   // ⚠️ Replace this with your own email address before sharing with testers.
   const FEEDBACK_EMAIL = 'your-email@example.com';
 
@@ -805,6 +836,7 @@
     dictOverlay: document.getElementById('dictOverlay'), dictContent: document.getElementById('dictContent'),
     tierLabel: document.getElementById('tierLabel'), tierBtn: document.getElementById('tierBtn'),
     soundBtn: document.getElementById('soundBtn'),
+    battleOverlay: document.getElementById('battleOverlay'), battleCard: document.getElementById('battleCard'),
   };
 
   let timerHandle = null;
@@ -1413,10 +1445,300 @@
   modeButtons.phrase.addEventListener('click', ()=> selectMode('phrase'));
   modeButtons.anagram.addEventListener('click', ()=> selectMode('anagram'));
   document.getElementById('startBtn').addEventListener('click', startGame);
+  document.getElementById('battleEntryBtn').addEventListener('click', ()=>{
+    els.startOverlay.style.display = 'none';
+    battleState.screen = 'lobby';
+    els.battleOverlay.style.display = 'flex';
+    renderBattleScreen();
+  });
   document.getElementById('retryBtn').addEventListener('click', ()=>{
     els.overOverlay.style.display = 'none';
     els.startOverlay.style.display = 'flex';
   });
+
+  // ================= BATTLE MODE (online multiplayer) =================
+  const BATTLE_MODE_LABELS = { reverse: '🔄逆(和→英クイズ)', phrase: '📝空欄補充', anagram: '🔤アナグラム' };
+
+  function escapeBattleHtml(str){ return escapeHtml(String(str == null ? '' : str)); }
+
+  function closeBattleSocket(){
+    if(battleSocket){
+      try{ battleSocket.onclose = null; battleSocket.close(); }catch(e){}
+      battleSocket = null;
+    }
+    if(battleState.battleTimerHandle){ clearInterval(battleState.battleTimerHandle); battleState.battleTimerHandle = null; }
+  }
+
+  function exitBattle(){
+    closeBattleSocket();
+    battleState = { ...battleState, screen: 'lobby', roomCode: null, isHost: false, players: [], mode: null,
+      round: 0, prompt: null, meaning: null, lastResult: null, ranking: null, hasAnswered: false, joinError: null };
+    els.battleOverlay.style.display = 'none';
+    els.startOverlay.style.display = 'flex';
+  }
+
+  async function createBattleRoom(){
+    battleState.joinError = null;
+    battleState.screen = 'creating';
+    renderBattleScreen();
+    try{
+      const headers = APP_SHARED_KEY ? { 'X-App-Key': APP_SHARED_KEY } : {};
+      const res = await fetchWithTimeout(`${DEEPL_PROXY_URL}/battle/create`, 8000, { method: 'POST', headers });
+      if(!res.ok) throw new Error('room create failed');
+      const data = await res.json();
+      connectBattleSocket(data.roomCode, battleState.playerName || 'ホスト');
+    }catch(err){
+      battleState.joinError = '部屋の作成に失敗しました。通信状態を確認してもう一度お試しください。';
+      battleState.screen = 'lobby';
+      renderBattleScreen();
+    }
+  }
+
+  function connectBattleSocket(code, name){
+    battleState.roomCode = code;
+    battleState.playerName = name;
+    closeBattleSocket();
+    const headers = APP_SHARED_KEY ? `&key=${encodeURIComponent(APP_SHARED_KEY)}` : '';
+    const ws = new WebSocket(`${BATTLE_WS_BASE}/battle/room/${encodeURIComponent(code)}/socket?name=${encodeURIComponent(name)}${headers}`);
+    battleSocket = ws;
+    ws.onopen = () => { battleState.joinError = null; };
+    ws.onmessage = (event) => {
+      let msg; try{ msg = JSON.parse(event.data); }catch(e){ return; }
+      handleBattleMessage(msg);
+    };
+    ws.onerror = () => {};
+    ws.onclose = () => {
+      if(battleState.screen !== 'lobby'){
+        battleState.joinError = '接続が切れました。もう一度お試しください。';
+        battleState.screen = 'lobby';
+        renderBattleScreen();
+      }
+    };
+  }
+
+  function handleBattleMessage(msg){
+    if(msg.type === 'welcome'){
+      battleState.isHost = !!msg.isHost;
+      battleState.players = msg.players || [];
+      battleState.mode = msg.mode || null;
+      battleState.round = msg.round || 0;
+      battleState.screen = 'waiting';
+    } else if(msg.type === 'players'){
+      battleState.players = msg.players || [];
+    } else if(msg.type === 'question'){
+      battleState.screen = 'question';
+      battleState.mode = msg.mode;
+      battleState.round = msg.round;
+      battleState.totalRounds = msg.totalRounds;
+      battleState.prompt = msg.prompt;
+      battleState.meaning = msg.meaning;
+      battleState.answerLength = msg.answerLength;
+      battleState.seconds = msg.seconds;
+      battleState.timeLeft = msg.seconds;
+      battleState.hasAnswered = false;
+      battleState.wrongFlash = false;
+      if(battleState.battleTimerHandle) clearInterval(battleState.battleTimerHandle);
+      battleState.battleTimerHandle = setInterval(()=>{
+        battleState.timeLeft = Math.max(0, battleState.timeLeft - 1);
+        renderBattleScreen();
+      }, 1000);
+    } else if(msg.type === 'wrong'){
+      battleState.wrongFlash = true;
+      renderBattleScreen();
+      setTimeout(()=>{ battleState.wrongFlash = false; renderBattleScreen(); }, 900);
+      return;
+    } else if(msg.type === 'roundResult'){
+      if(battleState.battleTimerHandle){ clearInterval(battleState.battleTimerHandle); battleState.battleTimerHandle = null; }
+      battleState.screen = 'roundResult';
+      battleState.lastResult = { winner: msg.winner, answer: msg.answer, meaning: msg.meaning };
+      battleState.players = msg.players || battleState.players;
+    } else if(msg.type === 'gameOver'){
+      if(battleState.battleTimerHandle){ clearInterval(battleState.battleTimerHandle); battleState.battleTimerHandle = null; }
+      battleState.screen = 'gameOver';
+      battleState.ranking = msg.ranking || [];
+    }
+    renderBattleScreen();
+  }
+
+  function sendBattleStart(mode){
+    if(!battleSocket || battleSocket.readyState !== WebSocket.OPEN) return;
+    battleSocket.send(JSON.stringify({ type: 'start', mode }));
+  }
+
+  function sendBattleAnswer(text){
+    if(!battleSocket || battleSocket.readyState !== WebSocket.OPEN) return;
+    if(battleState.hasAnswered) return;
+    battleState.hasAnswered = true;
+    battleSocket.send(JSON.stringify({ type: 'answer', text }));
+    renderBattleScreen();
+  }
+
+  function renderBattleScreen(){
+    const s = battleState;
+    let html = '';
+
+    if(s.screen === 'lobby'){
+      html = `
+        <h2>🏆 オンライン対戦</h2>
+        <p style="text-align:left;">友達と同じ問題に挑戦！一番早く正解した人がポイント獲得です。</p>
+        ${s.joinError ? `<p style="color:var(--danger); font-weight:700;">${escapeBattleHtml(s.joinError)}</p>` : ''}
+        <div style="text-align:left; margin-bottom:14px;">
+          <label style="font-size:13px; font-weight:700; display:block; margin-bottom:6px;">ニックネーム</label>
+          <input type="text" id="battleNameInput" maxlength="16" placeholder="例: たろう" value="${escapeBattleHtml(s.playerName)}"
+            style="width:100%; padding:12px; border-radius:8px; border:1.5px solid var(--paper-dim); font-size:15px;">
+        </div>
+        <button class="primary" id="battleCreateBtn">🚪 部屋を作る(ホストになる)</button>
+        <button class="primary" id="battleJoinShowBtn" style="background:var(--indigo); margin-top:10px;">🔑 コードを入力して参加する</button>
+        <button class="primary" id="battleBackBtn" style="background:#888; margin-top:10px;">戻る</button>
+      `;
+    } else if(s.screen === 'joinForm'){
+      html = `
+        <h2>🔑 部屋に参加</h2>
+        ${s.joinError ? `<p style="color:var(--danger); font-weight:700;">${escapeBattleHtml(s.joinError)}</p>` : ''}
+        <div style="text-align:left; margin-bottom:14px;">
+          <label style="font-size:13px; font-weight:700; display:block; margin-bottom:6px;">ニックネーム</label>
+          <input type="text" id="battleNameInput" maxlength="16" placeholder="例: はなこ" value="${escapeBattleHtml(s.playerName)}"
+            style="width:100%; padding:12px; border-radius:8px; border:1.5px solid var(--paper-dim); font-size:15px; margin-bottom:12px;">
+          <label style="font-size:13px; font-weight:700; display:block; margin-bottom:6px;">部屋のコード(4桁)</label>
+          <input type="text" id="battleCodeInput" maxlength="4" placeholder="例: AB12"
+            style="width:100%; padding:12px; border-radius:8px; border:1.5px solid var(--paper-dim); font-size:20px; text-align:center; letter-spacing:6px; text-transform:uppercase;">
+        </div>
+        <button class="primary" id="battleJoinBtn">参加する</button>
+        <button class="primary" id="battleBackBtn" style="background:#888; margin-top:10px;">戻る</button>
+      `;
+    } else if(s.screen === 'creating'){
+      html = `<h2>🚪 部屋を作成中...</h2><p>少々お待ちください。</p>`;
+    } else if(s.screen === 'waiting'){
+      const playerRows = s.players.map(p => `<div class="wordRow"><span class="w" style="color:var(--text-ink); background:var(--paper-dim);">${escapeBattleHtml(p.name)}</span></div>`).join('');
+      html = `
+        <h2>🚪 部屋番号: <span style="color:var(--gold);">${escapeBattleHtml(s.roomCode)}</span></h2>
+        <p>このコードを友達に伝えて参加してもらいましょう。</p>
+        <div class="suggestBox" style="margin-bottom:16px;">
+          <div class="lbl">👥 参加者(${s.players.length}人)</div>
+          <div class="wordList">${playerRows || '<div class="empty">まだ誰も参加していません</div>'}</div>
+        </div>
+        ${s.isHost ? `
+          <div class="modeBlock">
+            <div class="modeLabel">🎚️ モードを選ぶ(ホストのみ)</div>
+            <div class="modeRow">
+              <button class="modeBtn" data-battle-mode="reverse">🔄逆<br>(和→英クイズ)</button>
+              <button class="modeBtn" data-battle-mode="phrase">📝空欄補充<br>(よく使う表現)</button>
+              <button class="modeBtn" data-battle-mode="anagram">🔤アナグラム<br>(並び替え)</button>
+            </div>
+          </div>
+          <p style="font-size:12px; color:#3a3728;">モードを選ぶと、すぐに対戦がスタートします。</p>
+        ` : `<p>ホストがモードを選ぶと対戦が始まります。少々お待ちください…</p>`}
+        <button class="primary" id="battleBackBtn" style="background:#888; margin-top:10px;">退出する</button>
+      `;
+    } else if(s.screen === 'question'){
+      const meaningLine = s.meaning ? `<div style="font-size:15px; color:var(--accent-dark); font-weight:700; margin-bottom:10px;">🇯🇵 ${escapeBattleHtml(s.meaning)}</div>` : '';
+      const scoreRows = [...s.players].sort((a,b)=>b.score-a.score).map(p => `<div class="wordRow"><span class="w" style="color:var(--text-ink); background:var(--paper-dim);">${escapeBattleHtml(p.name)}</span><span class="m" style="color:var(--text-ink);">${p.score}点</span></div>`).join('');
+      html = `
+        <h2>ラウンド ${s.round} / ${s.totalRounds}</h2>
+        <div style="font-size:24px; font-weight:700; color:var(--gold); margin-bottom:6px;">⏱ 残り${s.timeLeft}秒</div>
+        ${meaningLine}
+        <div style="font-size:${s.mode === 'anagram' ? '28px' : '20px'}; font-weight:700; letter-spacing:${s.mode === 'anagram' ? '4px' : 'normal'}; margin-bottom:16px; background:var(--paper-dim); border-radius:8px; padding:14px;">
+          ${escapeBattleHtml(s.mode === 'anagram' ? s.prompt.toUpperCase() : s.prompt)}
+        </div>
+        ${s.wrongFlash ? '<p style="color:var(--danger); font-weight:700;">❌ 不正解！もう一度</p>' : ''}
+        ${s.hasAnswered ? '<p style="color:var(--accent-dark); font-weight:700;">回答を送信しました。他の人を待っています…</p>' : `
+          <div style="display:flex; gap:8px; margin-bottom:16px;">
+            <input type="text" id="battleAnswerInput" placeholder="英単語を入力" autocomplete="off"
+              style="flex:1; padding:13px; border-radius:8px; border:1.5px solid var(--paper-dim); font-size:17px;">
+            <button class="primary" id="battleAnswerBtn" style="width:auto; padding:0 20px;">回答</button>
+          </div>
+        `}
+        <div class="suggestBox">
+          <div class="lbl">👥 現在のスコア</div>
+          <div class="wordList">${scoreRows}</div>
+        </div>
+      `;
+    } else if(s.screen === 'roundResult'){
+      const r = s.lastResult || {};
+      const scoreRows = [...s.players].sort((a,b)=>b.score-a.score).map(p => `<div class="wordRow"><span class="w" style="color:var(--text-ink); background:var(--paper-dim);">${escapeBattleHtml(p.name)}</span><span class="m" style="color:var(--text-ink);">${p.score}点</span></div>`).join('');
+      html = `
+        <h2>${r.winner ? `🎉 ${escapeBattleHtml(r.winner)} さんの勝ち！` : '⏰ 時間切れ'}</h2>
+        <div style="font-size:20px; font-weight:700; color:var(--gold); margin-bottom:6px;">正解: ${escapeBattleHtml(r.answer)}</div>
+        ${r.meaning ? `<div style="font-size:14px; color:var(--accent-dark); margin-bottom:16px;">🇯🇵 ${escapeBattleHtml(r.meaning)}</div>` : ''}
+        <div class="suggestBox">
+          <div class="lbl">👥 現在のスコア</div>
+          <div class="wordList">${scoreRows}</div>
+        </div>
+        <p style="font-size:12px; color:#3a3728; margin-top:10px;">まもなく次の問題が始まります…</p>
+      `;
+    } else if(s.screen === 'gameOver'){
+      const rows = (s.ranking || []).map((p, i) => `<div class="wordRow"><span class="w" style="color:var(--text-ink); background:var(--paper-dim);">${i+1}位: ${escapeBattleHtml(p.name)}</span><span class="m" style="color:var(--text-ink);">${p.score}点</span></div>`).join('');
+      html = `
+        <h2>🏁 対戦終了！</h2>
+        <div class="suggestBox" style="margin-bottom:16px;">
+          <div class="lbl">🏆 最終順位</div>
+          <div class="wordList">${rows}</div>
+        </div>
+        ${battleState.isHost ? `
+          <div class="modeBlock">
+            <div class="modeLabel">🎚️ もう一度遊ぶ(ホストのみ)</div>
+            <div class="modeRow">
+              <button class="modeBtn" data-battle-mode="reverse">🔄逆<br>(和→英クイズ)</button>
+              <button class="modeBtn" data-battle-mode="phrase">📝空欄補充<br>(よく使う表現)</button>
+              <button class="modeBtn" data-battle-mode="anagram">🔤アナグラム<br>(並び替え)</button>
+            </div>
+          </div>
+        ` : ''}
+        <button class="primary" id="battleBackBtn" style="background:#888; margin-top:10px;">退出する</button>
+      `;
+    }
+
+    els.battleCard.innerHTML = html;
+    wireBattleScreenEvents();
+  }
+
+  function wireBattleScreenEvents(){
+    const nameInput = document.getElementById('battleNameInput');
+    if(nameInput) nameInput.addEventListener('input', (e)=>{ battleState.playerName = e.target.value; });
+
+    const createBtn = document.getElementById('battleCreateBtn');
+    if(createBtn) createBtn.addEventListener('click', ()=>{
+      battleState.playerName = (document.getElementById('battleNameInput')?.value || '').trim() || 'ホスト';
+      createBattleRoom();
+    });
+
+    const joinShowBtn = document.getElementById('battleJoinShowBtn');
+    if(joinShowBtn) joinShowBtn.addEventListener('click', ()=>{
+      battleState.screen = 'joinForm';
+      renderBattleScreen();
+    });
+
+    const joinBtn = document.getElementById('battleJoinBtn');
+    if(joinBtn) joinBtn.addEventListener('click', ()=>{
+      const name = (document.getElementById('battleNameInput')?.value || '').trim() || 'プレイヤー';
+      const code = (document.getElementById('battleCodeInput')?.value || '').trim().toUpperCase();
+      if(!/^[A-Z2-9]{4}$/.test(code)){
+        battleState.joinError = '4桁の部屋コードを正しく入力してください。';
+        renderBattleScreen();
+        return;
+      }
+      connectBattleSocket(code, name);
+    });
+
+    const backBtn = document.getElementById('battleBackBtn');
+    if(backBtn) backBtn.addEventListener('click', ()=>{
+      if(battleState.screen === 'joinForm'){ battleState.screen = 'lobby'; renderBattleScreen(); }
+      else exitBattle();
+    });
+
+    document.querySelectorAll('[data-battle-mode]').forEach(btn=>{
+      btn.addEventListener('click', ()=> sendBattleStart(btn.dataset.battleMode));
+    });
+
+    const answerBtn = document.getElementById('battleAnswerBtn');
+    const answerInput = document.getElementById('battleAnswerInput');
+    if(answerBtn && answerInput){
+      const submit = () => { const v = answerInput.value.trim(); if(v) sendBattleAnswer(v); };
+      answerBtn.addEventListener('click', submit);
+      answerInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') submit(); });
+      answerInput.focus();
+    }
+  }
 
   // (end-of-session summary triggered manually via a "give up" style flow is not exposed;
   // kept simple — game continues until the player closes the tab. Rounds gate covers monetization.)
