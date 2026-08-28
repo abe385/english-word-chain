@@ -164,6 +164,40 @@
     border-radius:10px; padding:10px; width:100%; font-weight:700; cursor:pointer;
     font-family:'Zen Kaku Gothic New', sans-serif;
   }
+
+  /* ==================== ログイン・課金UI ==================== */
+  .card input{
+    width:100%; padding:14px; border-radius:10px; border:1.5px solid var(--paper-dim);
+    font-size:17px; margin-bottom:10px; background:#fff; font-family:'Zen Kaku Gothic New', sans-serif;
+  }
+  .authError{ color:var(--danger); font-size:14px; font-weight:700; min-height:18px; margin-bottom:8px; text-align:left; }
+  .linkBtn{
+    background:none; border:none; color:var(--indigo); font-size:14px; font-weight:700;
+    text-decoration:underline; cursor:pointer; padding:0; font-family:inherit;
+  }
+  .accountBar{
+    font-size:13px; color:var(--paper); display:flex; flex-direction:column; gap:8px;
+    align-items:center; margin-top:8px; padding:8px 10px; background:rgba(255,255,255,0.08); border-radius:10px;
+  }
+  .upgradeBigBtn{
+    background:var(--gold); color:#2b2b22; font-weight:900; font-size:16px;
+    border:none; border-radius:12px; padding:12px 26px; cursor:pointer;
+  }
+  .smallLogout{
+    font-size:12px; color:#c9d2e8; font-weight:500; background:none; border:none;
+    text-decoration:underline; cursor:pointer; font-family:inherit;
+  }
+  .authTabs{
+    display:flex; gap:8px; margin-bottom:16px; background:var(--paper-dim);
+    border-radius:12px; padding:4px;
+  }
+  .authTabs button{
+    flex:1; padding:11px 8px; border:none; border-radius:9px; font-size:14px;
+    font-weight:700; cursor:pointer; background:none; color:#4a4a3f; font-family:inherit;
+  }
+  .authTabs button.activeTab{
+    background:var(--accent); color:#fff;
+  }
   .bigscore{ font-family:'Shippori Mincho', serif; font-size:40px; font-weight:800; color:var(--accent-dark); margin:6px 0 2px; }
   .scorelabel{font-size:11px; letter-spacing:0.2em; color:var(--indigo); margin-bottom:6px;}
   .installNote{ font-size:11px; color:#54617e; text-align:center; line-height:1.7; padding-top:2px; }
@@ -215,6 +249,7 @@
     <div class="eyebrow">ENGLISH WORD CHAIN</div>
     <h1>英語で遊ぼう！</h1>
     <div class="sub">一人で挑戦。答えたら即判定、わからない単語は意味も調べられます。</div>
+    <div class="accountBar" id="accountBar"></div>
   </div>
 
   <div class="status">
@@ -316,13 +351,65 @@
   </div>
 </div>
 
+<div class="overlay" id="loginOverlay" style="display:none;">
+  <div class="card">
+    <div class="authTabs">
+      <button id="tabSignup" class="activeTab">🆕 はじめての方</button>
+      <button id="tabLogin">🔑 2回目以降の方(ログイン)</button>
+    </div>
+    <h2 id="authTitle">はじめまして</h2>
+    <p id="authDesc">メールアドレスと、お好きなパスワード(8文字以上)を決めるだけで始められます。メール認証は不要です。登録すると5日間無料でお試しいただけます。</p>
+    <div class="authError" id="authError"></div>
+    <input type="email" id="authEmail" placeholder="メールアドレス" autocomplete="email">
+    <input type="password" id="authPassword" placeholder="パスワード(8文字以上)" autocomplete="new-password">
+    <input type="password" id="authPasswordConfirm" placeholder="パスワード(確認用・もう一度入力)" autocomplete="new-password">
+    <button class="primary" id="authSubmitBtn">無料で始める</button>
+    <div style="text-align:center; margin-top:10px; display:none;" id="forgotPasswordWrap">
+      <button class="linkBtn" id="forgotPasswordLink">パスワードを忘れた方はこちら</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="forgotOverlay" style="display:none;">
+  <div class="card">
+    <h2>🔑 パスワード再設定</h2>
+    <p>登録済みのメールアドレスを入力してください。再設定用のリンクをメールでお送りします。</p>
+    <div class="authError" id="forgotError"></div>
+    <input type="email" id="forgotEmail" placeholder="メールアドレス" autocomplete="email">
+    <button class="primary" id="forgotSubmitBtn">再設定メールを送る</button>
+    <button class="closeBtn" id="forgotBackBtn">ログイン画面に戻る</button>
+  </div>
+</div>
+
+<div class="overlay" id="resetOverlay" style="display:none;">
+  <div class="card">
+    <h2>🔑 新しいパスワードを設定</h2>
+    <p>新しいパスワード(8文字以上)を入力してください。</p>
+    <div class="authError" id="resetError"></div>
+    <input type="password" id="resetPassword" placeholder="新しいパスワード(8文字以上)" autocomplete="new-password">
+    <input type="password" id="resetPasswordConfirm" placeholder="新しいパスワード(確認用)" autocomplete="new-password">
+    <button class="primary" id="resetSubmitBtn">パスワードを更新する</button>
+  </div>
+</div>
+
 <div class="overlay" id="upgradeOverlay" style="display:none;">
   <div class="card">
     <h2 id="upgradeTitle">🌟 プレミアムにアップグレード</h2>
     <p id="upgradeBody">無料版はここまでです。プレミアムにアップグレードすると、ラウンド数・辞書検索回数が無制限になります。</p>
-    <button class="primary" id="fakeBuyBtn">アップグレードする(デモ・¥480)</button>
+    <div style="font-size:12px; margin-bottom:12px; line-height:1.8; color:#4a4a3f; text-align:left;">
+      <a href="terms.html" target="_blank" style="color:var(--indigo);">利用規約</a>
+      ・<a href="privacy.html" target="_blank" style="color:var(--indigo);">プライバシーポリシー</a>
+      ・<a href="tokushoho.html" target="_blank" style="color:var(--indigo);">特定商取引法に基づく表記</a>
+      をご確認ください。
+    </div>
+    <label style="display:flex; align-items:flex-start; gap:8px; font-size:13px; text-align:left; margin-bottom:14px; cursor:pointer;">
+      <input type="checkbox" id="ageConfirmCheckbox" style="margin-top:3px; width:18px; height:18px; flex-shrink:0;">
+      <span>私は18歳以上であり、上記の利用規約・プライバシーポリシー・特定商取引法に基づく表記の内容に同意します。</span>
+    </label>
+    <div class="authError" id="paywallError"></div>
+    <button class="primary" id="fakeBuyBtn">アップグレードする(月額110円)</button>
     <button class="closeBtn" id="closeUpgradeBtn">閉じる</button>
-    <div class="installNote">※ これはデモ表示です。実際の課金・決済は発生しません。本番運用時はApple/GoogleのIn-App Purchase等に置き換える想定です。</div>
+    <button class="linkBtn" id="portalLinkBtn" style="display:none; margin-top:10px;">契約管理はこちら</button>
   </div>
 </div>
 
@@ -851,6 +938,213 @@
   const MODE_IS_PHRASE = { normal: false, hard1: false, hard2: false, reverse: false, phrase: true, anagram: false };
   const MODE_IS_ANAGRAM = { normal: false, hard1: false, hard2: false, reverse: false, phrase: false, anagram: true };
   let isPremium = false;
+
+  // ==================== ログイン・課金機能 ====================
+  const API_BASE = "https://english-word-chain-account.hisashi-word-chain.workers.dev";
+  let authToken = localStorage.getItem('engAuthToken');
+  let authStatus = null;
+  let isSignupMode = true;
+  let resetTokenValue = null;
+
+  async function apiFetch(path, options = {}){
+    const headers = Object.assign({}, options.headers || {});
+    if(authToken) headers['Authorization'] = `Bearer ${authToken}`;
+    if(options.body) headers['Content-Type'] = 'application/json';
+    const res = await fetch(`${API_BASE}${path}`, Object.assign({}, options, { headers }));
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok) throw new Error(data.error || 'エラーが発生しました');
+    return data;
+  }
+
+  function showAuthOverlay(){ els.loginOverlay.style.display = 'flex'; }
+  function hideAuthOverlay(){ els.loginOverlay.style.display = 'none'; }
+
+  function updateAccountBar(){
+    if(!authStatus){ els.accountBar.innerHTML = ''; return; }
+    let html = '';
+    if(authStatus.status === 'trial'){
+      html = `<div>🎁 無料期間中</div><button id="acctUpgradeBtn" class="upgradeBigBtn">🚀 アップグレードする</button>`;
+    } else if(authStatus.status === 'active'){
+      html = `<div>✅ 有料会員</div><button id="acctPortalBtn" class="upgradeBigBtn">契約管理</button>`;
+    } else {
+      html = `<div>⏰ 無料期間が終了しました</div><button id="acctUpgradeBtn" class="upgradeBigBtn">🚀 アップグレードする</button>`;
+    }
+    html += `<button id="acctLogoutBtn" class="smallLogout">ログアウト</button>`;
+    els.accountBar.innerHTML = html;
+    const up = document.getElementById('acctUpgradeBtn'); if(up) up.addEventListener('click', () => openUpgradeFlow());
+    const pt = document.getElementById('acctPortalBtn'); if(pt) pt.addEventListener('click', openPortal);
+    const lo = document.getElementById('acctLogoutBtn'); if(lo) lo.addEventListener('click', logout);
+  }
+
+  async function refreshAuthStatus(){
+    if(!authToken){ isPremium = false; refreshTierUIIfReady(); showAuthOverlay(); return; }
+    try{
+      const data = await apiFetch('/auth/me', { method: 'GET' });
+      authStatus = data;
+      isPremium = (data.status === 'active');
+      updateAccountBar();
+      hideAuthOverlay();
+      refreshTierUIIfReady();
+    } catch(e){
+      authToken = null;
+      localStorage.removeItem('engAuthToken');
+      isPremium = false;
+      refreshTierUIIfReady();
+      showAuthOverlay();
+    }
+  }
+
+  function refreshTierUIIfReady(){
+    if(typeof refreshTierUI === 'function') refreshTierUI();
+  }
+
+  function setAuthMode(signup){
+    isSignupMode = signup;
+    els.authTitle.textContent = isSignupMode ? 'はじめまして' : 'おかえりなさい';
+    els.authDesc.textContent = isSignupMode
+      ? 'メールアドレスと、お好きなパスワード(8文字以上)を決めるだけで始められます。メール認証は不要です。登録すると5日間無料でお試しいただけます。'
+      : '登録済みのメールアドレスとパスワードでログインしてください。';
+    els.authSubmitBtn.textContent = isSignupMode ? '無料で始める' : 'ログイン';
+    els.authError.textContent = '';
+    els.authPasswordConfirm.style.display = isSignupMode ? 'block' : 'none';
+    els.authPasswordConfirm.value = '';
+    els.forgotPasswordWrap.style.display = isSignupMode ? 'none' : 'block';
+    document.getElementById('tabSignup').classList.toggle('activeTab', isSignupMode);
+    document.getElementById('tabLogin').classList.toggle('activeTab', !isSignupMode);
+  }
+
+  async function handleAuthSubmit(){
+    const email = els.authEmail.value.trim();
+    const password = els.authPassword.value;
+    els.authError.textContent = '';
+    if(isSignupMode){
+      if(password.length < 8){ els.authError.textContent = 'パスワードは8文字以上にしてください'; return; }
+      if(password !== els.authPasswordConfirm.value){ els.authError.textContent = 'パスワードが一致しません。もう一度ご確認ください。'; return; }
+    }
+    try{
+      const path = isSignupMode ? '/auth/signup' : '/auth/login';
+      const data = await apiFetch(path, { method: 'POST', body: JSON.stringify({ email, password }) });
+      authToken = data.token;
+      localStorage.setItem('engAuthToken', authToken);
+      await refreshAuthStatus();
+    } catch(e){
+      els.authError.textContent = e.message;
+    }
+  }
+
+  async function logout(){
+    try{ await apiFetch('/auth/logout', { method: 'POST' }); } catch(e){ /* ignore */ }
+    authToken = null;
+    authStatus = null;
+    isPremium = false;
+    localStorage.removeItem('engAuthToken');
+    updateAccountBar();
+    refreshTierUIIfReady();
+    showAuthOverlay();
+  }
+
+  function openForgotPassword(){
+    els.loginOverlay.style.display = 'none';
+    els.forgotOverlay.style.display = 'flex';
+    els.forgotError.textContent = '';
+    els.forgotError.style.color = '';
+    els.forgotEmail.value = els.authEmail.value || '';
+  }
+  function closeForgotPassword(){
+    els.forgotOverlay.style.display = 'none';
+    els.loginOverlay.style.display = 'flex';
+  }
+  async function handleForgotSubmit(){
+    const email = els.forgotEmail.value.trim();
+    els.forgotError.style.color = '';
+    els.forgotError.textContent = '';
+    if(!email){ els.forgotError.textContent = 'メールアドレスを入力してください'; return; }
+    try{
+      await apiFetch('/auth/request-reset', { method: 'POST', body: JSON.stringify({ email }) });
+      els.forgotError.style.color = 'var(--ok)';
+      els.forgotError.textContent = '再設定用のメールを送信しました(登録されている場合)。メールをご確認ください。';
+    } catch(e){
+      els.forgotError.textContent = e.message;
+    }
+  }
+
+  function checkResetTokenInUrl(){
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('reset_token');
+    if(token){
+      resetTokenValue = token;
+      els.loginOverlay.style.display = 'none';
+      els.resetOverlay.style.display = 'flex';
+      return true;
+    }
+    return false;
+  }
+  async function handleResetSubmit(){
+    const password = els.resetPassword.value;
+    const confirmPw = els.resetPasswordConfirm.value;
+    els.resetError.textContent = '';
+    if(password.length < 8){ els.resetError.textContent = 'パスワードは8文字以上にしてください'; return; }
+    if(password !== confirmPw){ els.resetError.textContent = 'パスワードが一致しません'; return; }
+    try{
+      await apiFetch('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token: resetTokenValue, password }) });
+      els.resetOverlay.style.display = 'none';
+      history.replaceState(null, '', window.location.pathname);
+      setAuthMode(false);
+      showAuthOverlay();
+      alert('パスワードを再設定しました。新しいパスワードでログインしてください。');
+    } catch(e){
+      els.resetError.textContent = e.message;
+    }
+  }
+
+  function openUpgradeFlow(){
+    if(!authToken){ showAuthOverlay(); return; }
+    els.ageConfirmCheckbox.checked = false;
+    els.paywallError.textContent = '';
+    els.portalLinkBtn.style.display = (authStatus && authStatus.status === 'active') ? 'inline-block' : 'none';
+    showUpgrade('無料版はここまでです。プレミアムにアップグレードすると、ラウンド数・辞書検索回数が無制限になります。');
+  }
+
+  function confirmUpgrade(){
+    if(!els.ageConfirmCheckbox.checked){
+      els.paywallError.textContent = '同意いただける場合のみお進みいただけます。';
+      return;
+    }
+    els.paywallError.textContent = '';
+    startCheckout();
+  }
+
+  async function startCheckout(){
+    if(!authToken){ showAuthOverlay(); return; }
+    try{
+      const data = await apiFetch('/billing/create-checkout-session', { method: 'POST' });
+      window.location.href = data.url;
+    } catch(e){
+      alert('決済ページの取得に失敗しました: ' + e.message);
+    }
+  }
+
+  async function openPortal(){
+    try{
+      const data = await apiFetch('/billing/portal', { method: 'POST' });
+      window.location.href = data.url;
+    } catch(e){
+      alert('契約管理ページの取得に失敗しました: ' + e.message);
+    }
+  }
+
+  async function checkBillingReturn(){
+    const params = new URLSearchParams(window.location.search);
+    if(params.get('billing') === 'success'){
+      for(let i = 0; i < 5; i++){
+        await new Promise(r => setTimeout(r, 1500));
+        await refreshAuthStatus();
+        if(authStatus && authStatus.status === 'active') break;
+      }
+      history.replaceState(null, '', window.location.pathname);
+    }
+  }
+
   let lookupCount = 0;
   const FREE_ROUNDS = 10;
   const FREE_LOOKUPS = 3;
@@ -916,6 +1210,21 @@
     tierLabel: document.getElementById('tierLabel'), tierBtn: document.getElementById('tierBtn'),
     soundBtn: document.getElementById('soundBtn'),
     battleOverlay: document.getElementById('battleOverlay'), battleCard: document.getElementById('battleCard'),
+    accountBar: document.getElementById('accountBar'),
+    loginOverlay: document.getElementById('loginOverlay'),
+    authTitle: document.getElementById('authTitle'), authDesc: document.getElementById('authDesc'),
+    authError: document.getElementById('authError'), authEmail: document.getElementById('authEmail'),
+    authPassword: document.getElementById('authPassword'), authPasswordConfirm: document.getElementById('authPasswordConfirm'),
+    authSubmitBtn: document.getElementById('authSubmitBtn'),
+    forgotPasswordWrap: document.getElementById('forgotPasswordWrap'), forgotPasswordLink: document.getElementById('forgotPasswordLink'),
+    forgotOverlay: document.getElementById('forgotOverlay'), forgotEmail: document.getElementById('forgotEmail'),
+    forgotError: document.getElementById('forgotError'), forgotSubmitBtn: document.getElementById('forgotSubmitBtn'),
+    forgotBackBtn: document.getElementById('forgotBackBtn'),
+    resetOverlay: document.getElementById('resetOverlay'), resetPassword: document.getElementById('resetPassword'),
+    resetPasswordConfirm: document.getElementById('resetPasswordConfirm'), resetError: document.getElementById('resetError'),
+    resetSubmitBtn: document.getElementById('resetSubmitBtn'),
+    ageConfirmCheckbox: document.getElementById('ageConfirmCheckbox'), paywallError: document.getElementById('paywallError'),
+    portalLinkBtn: document.getElementById('portalLinkBtn'),
   };
 
   let timerHandle = null;
@@ -974,15 +1283,18 @@
     els.upgradeOverlay.style.display = 'flex';
   }
   document.getElementById('closeUpgradeBtn').addEventListener('click', ()=>{ els.upgradeOverlay.style.display = 'none'; });
-  document.getElementById('fakeBuyBtn').addEventListener('click', ()=>{
-    // DEMO ONLY: no real payment is processed. In production this would call
-    // a real payment API (e.g. Apple/Google In-App Purchase or Stripe Checkout).
-    isPremium = true;
-    refreshTierUI();
-    els.upgradeOverlay.style.display = 'none';
-    setFeedback('🌟 プレミアムにアップグレードしました(実際の課金はありません)', true);
-    if(state && !state.alive === false){}
-  });
+  document.getElementById('fakeBuyBtn').addEventListener('click', confirmUpgrade);
+  els.portalLinkBtn.addEventListener('click', openPortal);
+  els.authSubmitBtn.addEventListener('click', handleAuthSubmit);
+  document.getElementById('tabSignup').addEventListener('click', () => setAuthMode(true));
+  document.getElementById('tabLogin').addEventListener('click', () => setAuthMode(false));
+  els.forgotPasswordLink.addEventListener('click', openForgotPassword);
+  els.forgotBackBtn.addEventListener('click', closeForgotPassword);
+  els.forgotSubmitBtn.addEventListener('click', handleForgotSubmit);
+  els.resetSubmitBtn.addEventListener('click', handleResetSubmit);
+  if(!checkResetTokenInUrl()){
+    refreshAuthStatus().then(checkBillingReturn);
+  }
   els.tierBtn.addEventListener('click', ()=>{
     if(isPremium) return;
     showUpgrade('プレミアムにアップグレードすると、ラウンド数・辞書検索回数がすべて無制限になります。');
