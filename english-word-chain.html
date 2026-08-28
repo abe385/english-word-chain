@@ -250,6 +250,21 @@
     <h1>英語で遊ぼう！</h1>
     <div class="sub">一人で挑戦。答えたら即判定、わからない単語は意味も調べられます。</div>
     <div class="accountBar" id="accountBar"></div>
+    <div style="text-align:center; margin-top:6px;">
+      <button id="installBtn" class="linkBtn" style="display:none; color:#ffffff; font-size:16px; font-weight:800; text-decoration:underline;">📲 ホーム画面に追加してアプリのように使う</button>
+    </div>
+
+    <div class="overlay" id="installIosOverlay" style="display:none;">
+      <div class="card">
+        <h2>📲 ホーム画面に追加</h2>
+        <p style="text-align:left; line-height:2;">
+          1. 画面下(または上)の <b>共有ボタン</b>(四角から矢印が出ているアイコン)をタップ<br>
+          2. メニューの中から <b>「ホーム画面に追加」</b> を選択<br>
+          3. 右上の <b>「追加」</b> をタップすれば完了です
+        </p>
+        <button class="primary" id="installIosCloseBtn">閉じる</button>
+      </div>
+    </div>
   </div>
 
   <div class="status">
@@ -1225,6 +1240,9 @@
     resetSubmitBtn: document.getElementById('resetSubmitBtn'),
     ageConfirmCheckbox: document.getElementById('ageConfirmCheckbox'), paywallError: document.getElementById('paywallError'),
     portalLinkBtn: document.getElementById('portalLinkBtn'),
+    installBtn: document.getElementById('installBtn'),
+    installIosOverlay: document.getElementById('installIosOverlay'),
+    installIosCloseBtn: document.getElementById('installIosCloseBtn'),
   };
 
   let timerHandle = null;
@@ -2750,6 +2768,46 @@
 
   // ================= INIT =================
   refreshTierUI();
+
+  // ==================== PWA「ホーム画面に追加」機能 ====================
+  let deferredInstallPrompt = null;
+  const isIosDevice = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    els.installBtn.style.display = 'inline-block';
+  });
+
+  if (isIosDevice) {
+    els.installBtn.style.display = 'inline-block';
+  }
+
+  els.installBtn.addEventListener('click', async () => {
+    if (isIosDevice) {
+      els.installIosOverlay.style.display = 'flex';
+      return;
+    }
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      els.installBtn.style.display = 'none';
+    }
+  });
+
+  els.installIosCloseBtn.addEventListener('click', () => {
+    els.installIosOverlay.style.display = 'none';
+  });
+
+  window.addEventListener('appinstalled', () => {
+    els.installBtn.style.display = 'none';
+  });
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  }
+
 })();
 </script>
 
